@@ -39,3 +39,6 @@ export function stageCards() {
   const w = 196, h = 230, gap = 20, x0 = W / 2 - (5 * w + 4 * gap) / 2;
   return STAGE_OPTS.map((_, i) => ({ x: x0 + i * (w + gap), y: 140, w, h }));
 }
+
+// Titelbild: Spielmodus wählen [Abenteuer] [Rennen]
+export const MODE_BTNS = [{ x: W / 2 - 350, y: 420, w: 330, h: 150 }, { x: W / 2 + 20, y: 420, w: 330, h: 150 }];

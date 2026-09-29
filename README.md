@@ -3,7 +3,7 @@
 Ein Jump-and-Run-Spiel für Kinder von 6 bis 8 Jahren, als reine Web-App (Vanilla JS, ES-Module, kein Build-Schritt).
 Gedacht für Safari auf dem iPad, gespiegelt per AirPlay auf den TV und gespielt mit einem Bluetooth-Controller.
 
-> **Stand:** Schritt 7: Lernstufen (Kindergarten bis 3. Klasse) mit 13 Rätselarten. Davor Schritt 6: 8 Welten mit Leitern, Wasser, fahrenden Plattformen, versteckten Sternen und Lernrätseln.
+> **Stand:** Schritt 8: Flinki-Rennen (Pseudo-3D-Kartrennen). Davor Schritt 7: Lernstufen (Kindergarten bis 3. Klasse) mit 13 Rätselarten. Davor Schritt 6: 8 Welten mit Leitern, Wasser, fahrenden Plattformen, versteckten Sternen und Lernrätseln.
 > Als Nächstes: Einstellungen & Musik, Level-Editor, 2-Spieler-Modus. 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
 
 ## Starten (lokal)
@@ -34,6 +34,22 @@ Dann `http://localhost:8000/` öffnen. Vom iPad aus im selben WLAN: `http://<IP-
 - Die Touch-Knöpfe erscheinen nur auf Touch-Geräten, und nur solange kein Controller aktiv ist.
 - Längeres Drücken der Sprungtaste lässt Flinki höher springen. Coyote Time (0,1 s) und
   Jump Buffer (0,14 s) machen das Springen nachsichtig.
+
+## Flinki-Rennen (Pseudo-3D)
+
+Im Titelbild **«Rennen»** wählen (◀ ▶ und A, oder antippen), dann eine Strecke:
+**Wiesenring**, **Strandkurs** oder **Regenbogenbahn**.
+
+- Ansicht wie bei alten Konsolen-Kartspielen («Mode 7»): Man sitzt hinter Flinkis Kart, die Strecke läuft in die Tiefe.
+- **Lenken:** ◀ ▶ (Stick, Steuerkreuz, Pfeiltasten oder Touch-Knöpfe). **Gas geht automatisch.**
+- **Sterne** füllen die Turbo-Anzeige. **A / Leertaste / «Turbo»** zündet den Turbo (braucht ¼ der Anzeige).
+- **Gelbe Pfeil-Felder** auf der Strecke geben ebenfalls Turbo.
+- **Lenkhilfe:** Wer nicht lenkt, wird sanft auf der Strecke gehalten. Neben der Strecke wird man nur langsamer.
+- Gegner: **Schnecke, Hase, Igel**. Sie passen ihr Tempo an, damit es spannend bleibt.
+- 3 Runden, danach ein Siegertreppchen. Die beste Platzierung pro Strecke wird als Medaille gespeichert.
+- Start = Pause (weiter oder zurück zu den Strecken).
+- **Neue Strecke:** in `src/race/tracks.js` einen Eintrag mit Kontrollpunkten (`pts`) ergänzen. Daraus wird automatisch
+  eine runde Strecke. Deko: `tree`, `palm` oder `lolly`.
 
 ## Die 8 Welten
 
@@ -112,6 +128,8 @@ src/
   quizdraw.js       Rätsel-Fenster zeichnen
   pics.js           selbst gezeichnete Bilder (Apfel, Fisch, Haus, …) und Formen
   speech.js         Vorlesen (Web Speech API, auf dem iPad offline)
+  race/race.js      Flinki-Rennen: Pseudo-3D-Boden, Karts, Gegner, Streckenwahl
+  race/tracks.js    Rennstrecken (Kontrollpunkte, Farben, Deko)
 levels/
   index.json        Reihenfolge der Welten
   sonnenwiese.txt … ein Level pro Datei (Text-Map)

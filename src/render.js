@@ -6,9 +6,11 @@ import { tile, solid } from './physics.js';
 import { padActive, isTouch } from './input.js';
 import { THEMES } from './themes.js';
 import { best, isUnlocked, save } from './save.js';
+import { MODE_BTNS } from './ui.js';
 import { mapNodes, NODE_R, PAUSE_BTNS, STAGE_BTN, STAGE_CLOSE, STAGE_OPTS, stageCards } from './ui.js';
 import { STAGES, TYPE_NAMES, autoStage } from './quiz.js';
 import { drawQuiz } from './quizdraw.js';
+import { drawRace, drawRaceMenu } from './race/race.js';
 import { ctx, scale, el, rrect, txt, starShape, cloud, drawFox } from './gfx.js';
 
 const SKYSTARS = []; for (let i = 0; i < 70; i++) SKYSTARS.push([Math.random() * W, Math.random() * 360, Math.random() * 6]);
@@ -199,18 +201,37 @@ function hint() {
   if (padActive) return 'Drück A';
   return isTouch ? 'Tippe auf den Bildschirm' : 'Drück die Leertaste';
 }
+// kleines Kart von der Seite (für den Rennen-Knopf)
+function kartIcon(x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = '#3d8bff'; rrect(-44, -18, 88, 26, 10); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-10, -18); ctx.lineTo(20, -18); ctx.lineTo(34, -4); ctx.lineTo(-10, -4); ctx.fill();
+  ctx.fillStyle = '#2a2a33'; el(-26, 12, 14, 14); el(28, 12, 14, 14); ctx.fillStyle = '#bbb'; el(-26, 12, 5, 5); el(28, 12, 5, 5);
+  ctx.restore();
+  ctx.save(); ctx.translate(x - 8 * s, y - 16 * s); ctx.scale(s * .7, s * .7); drawFox(0, 0, 1, G.time, 0, false); ctx.restore();
+  // Zielflagge
+  ctx.fillStyle = '#6b6b7a'; ctx.fillRect(x + 46 * s, y - 60 * s, 4 * s, 60 * s);
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { ctx.fillStyle = (r + c) % 2 ? '#222' : '#fff'; ctx.fillRect(x + 50 * s + c * 8 * s, y - 60 * s + r * 8 * s, 8 * s, 8 * s); }
+}
 function drawTitle() {
   const time = G.time;
   const th = THEMES.wiese;
   G.cam = time * 60; drawBG(th);
   ctx.fillStyle = th.grass; ctx.fillRect(0, H - 96, W, 96); ctx.fillStyle = th.dirt; ctx.fillRect(0, H - 83, W, 83);
-  const by = H - 96 - Math.abs(Math.sin(time * 3)) * 70;
-  drawFox(W / 2, by, 1, time, 0, false);
-  for (let i = 0; i < 5; i++) starShape(W / 2 - 240 + i * 120, 200 + Math.sin(time * 3 + i) * 10, 22, Math.sin(time + i) * .3);
-  txt('Flinki der Fuchs', W / 2, 300, 104, '#ffe066');
-  txt('Sammle Sterne und hüpf bis zur Fahne!', W / 2, 385, 40, '#fff');
-  if (Math.sin(time * 5) > -.3) txt(hint() + ' zum Starten', W / 2, 470, 44, '#b6ffcf');
-  txt(padActive ? 'Controller verbunden' : 'Controller? Einmal eine Taste drücken', W / 2, H - 40, 28, '#fff');
+  for (let i = 0; i < 5; i++) starShape(W / 2 - 240 + i * 120, 120 + Math.sin(time * 3 + i) * 10, 22, Math.sin(time + i) * .3);
+  txt('Flinki der Fuchs', W / 2, 225, 104, '#ffe066');
+  txt('Was möchtest du spielen?', W / 2, 320, 40, '#fff');
+  MODE_BTNS.forEach((b, i) => {
+    const sel = i === G.titleSel, y = b.y - (sel ? 8 : 0);
+    rrect(b.x, y, b.w, b.h, 30); ctx.fillStyle = sel ? '#fff' : 'rgba(255,255,255,.75)'; ctx.fill();
+    ctx.lineWidth = sel ? 9 : 4; ctx.strokeStyle = sel ? '#ffb020' : 'rgba(255,255,255,.9)'; ctx.stroke();
+    if (i === 0) drawFox(b.x + 70, y + 110 - (sel ? Math.abs(Math.sin(time * 5)) * 12 : 0), 1, time, 0, false);
+    else kartIcon(b.x + 70, y + 92 + (sel ? Math.sin(time * 12) * 2 : 0), .8);
+    ctx.font = `800 36px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#3a2560';
+    ctx.fillText(i ? 'Rennen' : 'Abenteuer', b.x + 140, y + b.h / 2 + 4);
+  });
+  if (Math.sin(time * 5) > -.3) txt(padActive ? '◀ ▶ wählen   A = los!' : isTouch ? 'Tippe auf ein Spiel' : '← → wählen   Leertaste = los!', W / 2, 610, 32, '#b6ffcf');
+  txt(padActive ? 'Controller verbunden' : 'Controller? Einmal eine Taste drücken', W / 2, H - 30, 26, '#fff');
 }
 function drawDone() {
   panel(330);
@@ -383,6 +404,8 @@ function drawPause() {
 export function draw() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   if (G.state === 'title') { drawTitle(); return; }
+  if (G.state === 'racemenu') { drawRaceMenu(G.raceSel, save.race, G.time, padActive || !isTouch); return; }
+  if (G.state === 'race') { drawRace(); return; }
   if (G.state === 'win') { drawWin(); return; }
   if (G.state === 'map') { drawMap(); drawStageBtn(); return; }
   if (G.state === 'stage') { drawMap(); drawStagePicker(); return; }

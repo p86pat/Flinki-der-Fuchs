@@ -69,7 +69,11 @@ export function readInput() {
 }
 
 const touchUI = document.getElementById('touch');
-export function updateTouchUI(playing) { touchUI.classList.toggle('hidden', !(isTouch && !padActive && playing)); }
+const jumpBtn = document.getElementById('bj');
+export function updateTouchUI(playing, jumpLabel = 'Hopp') {
+  touchUI.classList.toggle('hidden', !(isTouch && !padActive && playing));
+  if (jumpBtn.textContent !== jumpLabel) jumpBtn.textContent = jumpLabel;
+}
 
 /* Vollbild */
 const fsBtn = document.getElementById('fs');

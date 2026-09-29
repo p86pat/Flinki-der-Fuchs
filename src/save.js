@@ -13,10 +13,10 @@ function load() {
       // alte Dateinamen (bis Schritt 5) übernehmen
       for (const [a, b] of [['welt1', 'sonnenwiese'], ['welt2', 'abendhuegel'], ['welt3', 'sternennacht']])
         if (s.best[a] && !s.best[b]) { s.best[b] = s.best[a]; delete s.best[a]; }
-      return { best: s.best, stage: s.stage || 'auto', stats: s.stats || {} };
+      return { best: s.best, stage: s.stage || 'auto', stats: s.stats || {}, race: s.race || {} };
     }
   } catch (e) {}
-  return { best: {}, stage: 'auto', stats: {} };
+  return { best: {}, stage: 'auto', stats: {}, race: {} };
 }
 export const save = load();
 
@@ -45,4 +45,9 @@ export function recordQuiz(type, firstTry) {
   const s = save.stats[type] || (save.stats[type] = { n: 0, ok: 0 });
   s.n++; if (firstTry) s.ok++;
   persist();
+}
+
+// Rennen: beste Platzierung je Strecke
+export function raceResult(id, place) {
+  if (!save.race[id] || place < save.race[id]) { save.race[id] = place; persist(); }
 }

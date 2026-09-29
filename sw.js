@@ -3,7 +3,7 @@
  * wird die Datei neu geladen. Änderungen auf dem Server sind also beim übernächsten
  * Start sichtbar. Neue Dateien bitte in FILES eintragen und VERSION erhöhen.
  */
-const VERSION = 'flinki-v8';
+const VERSION = 'flinki-v9';
 const FILES = [
   './',
   './index.html',
@@ -26,6 +26,8 @@ const FILES = [
   './src/quizdraw.js',
   './src/pics.js',
   './src/speech.js',
+  './src/race/race.js',
+  './src/race/tracks.js',
   './levels/index.json',
   './levels/sonnenwiese.txt',
   './levels/abendhuegel.txt',

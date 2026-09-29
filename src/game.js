@@ -7,8 +7,11 @@ import { tile, solid, moveX, moveY, overlap, isWater, isLadder } from './physics
 import { readInput, updateTouchUI } from './input.js';
 import { msg, burst, updateFx } from './fx.js';
 import { draw } from './render.js';
-import { isUnlocked, finishLevel, best, save, setStage, recordQuiz } from './save.js';
-import { mapNodes, NODE_R, PAUSE_BTNS, hit, hitCircle, quizButtons, QUIZ_SPEAK, QUIZ_CLOSE, STAGE_BTN, STAGE_CLOSE, STAGE_OPTS, stageCards } from './ui.js';
+import { isUnlocked, finishLevel, best, save, setStage, recordQuiz, raceResult } from './save.js';
+import { startRace, updateRace, R } from './race/race.js';
+import { trackCards } from './race/race.js';
+import { TRACKS } from './race/tracks.js';
+import { mapNodes, NODE_R, PAUSE_BTNS, hit, hitCircle, quizButtons, QUIZ_SPEAK, QUIZ_CLOSE, STAGE_BTN, STAGE_CLOSE, STAGE_OPTS, stageCards, MODE_BTNS } from './ui.js';
 import { makeQuiz, autoStage, STAGES } from './quiz.js';
 import { say, hush } from './speech.js';
 
@@ -260,11 +263,38 @@ function frame(now) {
   const inp = readInput();
   if (G.state === 'title') {
     G.time += d;
-    if (inp.confirmPressed) {
+    // Modus wählen: Abenteuer oder Rennen
+    let pick = -1;
+    if (inp.tap) pick = MODE_BTNS.findIndex(b => hit(inp.tap, b));
+    else {
+      if (inp.leftPressed && G.titleSel) { G.titleSel = 0; sfx.select(); }
+      if (inp.rightPressed && !G.titleSel) { G.titleSel = 1; sfx.select(); }
+      if (inp.confirmPressed) pick = G.titleSel;
+    }
+    if (pick === 1) { G.titleSel = 1; G.state = 'racemenu'; sfx.select(); }
+    else if (pick === 0) {
       // Auf der Karte bei der ersten noch nicht geschafften Welt beginnen
       let i = LEVELS.findIndex(l => !best(l)); if (i < 0) i = LEVELS.length - 1;
       openMap(i);
     }
+  }
+  else if (G.state === 'racemenu') {
+    G.time += d;
+    let pick = -1;
+    if (inp.tap) pick = trackCards().findIndex(c => hit(inp.tap, c));
+    else {
+      if (inp.leftPressed && G.raceSel > 0) { G.raceSel--; sfx.select(); }
+      if (inp.rightPressed && G.raceSel < TRACKS.length - 1) { G.raceSel++; sfx.select(); }
+      if (inp.startPressed) G.state = 'title';
+      else if (inp.confirmPressed) pick = G.raceSel;
+    }
+    if (pick >= 0) { G.raceSel = pick; startRace(pick); G.state = 'race'; }
+  }
+  else if (G.state === 'race') {
+    G.time += d;
+    const wasPhase = R.phase;
+    if (updateRace(d, inp) === 'menu') G.state = 'racemenu';
+    if (wasPhase !== 'finish' && R.phase === 'finish') raceResult(R.def.id, R.place);
   }
   else if (G.state === 'map') updateMap(d, inp);
   else if (G.state === 'stage') updateStage(d, inp);
@@ -292,7 +322,7 @@ function frame(now) {
     if (inp.confirmPressed) openMap(G.levelIdx);
   }
   if (G.state !== 'play') accT = 0;
-  updateTouchUI(G.state === 'play');
+  updateTouchUI(G.state === 'play' || (G.state === 'race' && (R.phase === 'run' || R.phase === 'count')), G.state === 'race' ? 'Turbo' : 'Hopp');
   draw();
   requestAnimationFrame(frame);
 }
