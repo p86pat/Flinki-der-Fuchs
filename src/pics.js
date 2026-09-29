@@ -79,6 +79,31 @@ const PICS = {
   },
   fuchs() { ctx.save(); ctx.scale(1.35, 1.35); drawFox(0, 30, 1, .9, 0, false); ctx.restore(); },
   stern() { starShape(0, 0, 42, 0); },
+  banane() {
+    ctx.fillStyle = '#ffd43b'; ctx.beginPath(); ctx.moveTo(-40, -20);
+    ctx.quadraticCurveTo(-30, 36, 40, 24); ctx.quadraticCurveTo(-8, 18, -30, -26); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#e0a800'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#7a4a22'; el(-36, -24, 5, 5); el(40, 24, 4, 3);
+  },
+  tomate() {
+    ctx.fillStyle = '#ff3b3b'; el(0, 6, 40, 34);
+    ctx.fillStyle = 'rgba(255,255,255,.45)'; el(-16, -6, 8, 6);
+    ctx.fillStyle = '#2fa84f'; for (let i = 0; i < 5; i++) { ctx.save(); ctx.translate(0, -26); ctx.rotate(i * 1.25); el(10, 0, 12, 4); ctx.restore(); }
+    line(4, '#2fa84f', [[0, -26], [2, -38]]);
+  },
+  blume() {
+    line(6, '#2fa84f', [[0, 0], [0, 48]]); ctx.save(); ctx.translate(12, 32); ctx.rotate(-.6); ctx.fillStyle = '#3ddc84'; el(0, 0, 12, 5); ctx.restore();
+    ctx.fillStyle = '#ff7ab8'; for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; el(Math.cos(a) * 18, -10 + Math.sin(a) * 18, 12, 12); }
+    ctx.fillStyle = '#ffd43b'; el(0, -10, 11, 11);
+  },
+  auto() {
+    ctx.fillStyle = '#3d8bff'; rrect(-46, -4, 92, 30, 10); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-26, -4); ctx.lineTo(-14, -28); ctx.lineTo(18, -28); ctx.lineTo(32, -4); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#cfe8ff'; ctx.beginPath(); ctx.moveTo(-18, -7); ctx.lineTo(-10, -23); ctx.lineTo(0, -23); ctx.lineTo(0, -7); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(5, -7); ctx.lineTo(5, -23); ctx.lineTo(15, -23); ctx.lineTo(25, -7); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#2a1a10'; el(-24, 26, 11, 11); el(24, 26, 11, 11); ctx.fillStyle = '#bbb'; el(-24, 26, 4, 4); el(24, 26, 4, 4);
+    ctx.fillStyle = '#ffe066'; el(42, 6, 4, 4);
+  },
   rakete() {
     poly('#ff8a2a', [[-10, 34], [0, 54], [10, 34]]);
     poly('#ff4d4d', [[-16, 10], [-30, 38], [-12, 32]]); poly('#ff4d4d', [[16, 10], [30, 38], [12, 32]]);
@@ -102,4 +127,28 @@ export function drawShape(key, x, y, r) {
   else if (shape === 'dreieck') { ctx.moveTo(0, -r); ctx.lineTo(r * 1.05, r * .8); ctx.lineTo(-r * 1.05, r * .8); ctx.closePath(); }
   if (shape === 'stern') { ctx.restore(); starShape(x, y, r * 1.1, 0, col, 'rgba(35,20,60,.55)'); return; }
   ctx.fill(); ctx.stroke(); ctx.restore();
+}
+
+// Schweizer Münze (Wert in Rappen)
+const COIN = { 500: [44, '#d9dde3', '5', 'Fr.'], 200: [38, '#d9dde3', '2', 'Fr.'], 100: [32, '#d9dde3', '1', 'Fr.'], 50: [25, '#d9dde3', '½', 'Fr.'], 20: [29, '#e3e6ea', '20', 'Rp.'], 10: [27, '#e3e6ea', '10', 'Rp.'], 5: [24, '#e8c45a', '5', 'Rp.'] };
+export function drawCoin(v, x, y, k = 1) {
+  const [r0, col, big, small] = COIN[v], r = r0 * k;
+  ctx.fillStyle = 'rgba(40,25,20,.2)'; el(x + 2, y + 3, r, r);
+  ctx.fillStyle = col; el(x, y, r, r);
+  ctx.strokeStyle = 'rgba(80,80,100,.6)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, r - 4, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#4a4a5a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `800 ${Math.round(r * .8)}px 'Baloo 2',sans-serif`; ctx.fillText(big, x, y - r * .12);
+  ctx.font = `800 ${Math.round(r * .36)}px 'Baloo 2',sans-serif`; ctx.fillText(small, x, y + r * .5);
+}
+
+// Zeigeruhr
+export function drawClock(h, m, x, y, r) {
+  ctx.fillStyle = '#3d8bff'; el(x, y, r, r); ctx.fillStyle = '#fff'; el(x, y, r * .86, r * .86);
+  ctx.fillStyle = '#3a2560'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `800 ${Math.round(r * .2)}px 'Baloo 2',sans-serif`;
+  for (let i = 1; i <= 12; i++) { const a = i * Math.PI / 6 - Math.PI / 2; ctx.fillText(String(i), x + Math.cos(a) * r * .68, y + Math.sin(a) * r * .68 + 2); }
+  for (let i = 0; i < 60; i++) { const a = i * Math.PI / 30; if (i % 5) { ctx.fillStyle = '#b8b0cc'; el(x + Math.cos(a) * r * .8, y + Math.sin(a) * r * .8, 1.6, 1.6); } }
+  const ha = ((h % 12) + m / 60) * Math.PI / 6 - Math.PI / 2, ma = m * Math.PI / 30 - Math.PI / 2;
+  line(r * .09, '#3a2560', [[x, y], [x + Math.cos(ha) * r * .42, y + Math.sin(ha) * r * .42]]);  // kurzer Stundenzeiger
+  line(r * .055, '#ff4d4d', [[x, y], [x + Math.cos(ma) * r * .66, y + Math.sin(ma) * r * .66]]); // langer Minutenzeiger
+  ctx.fillStyle = '#3a2560'; el(x, y, r * .06, r * .06);
 }

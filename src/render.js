@@ -5,8 +5,9 @@ import { LEVELS } from './levels.js';
 import { tile, solid } from './physics.js';
 import { padActive, isTouch } from './input.js';
 import { THEMES } from './themes.js';
-import { best, isUnlocked } from './save.js';
-import { mapNodes, NODE_R, PAUSE_BTNS } from './ui.js';
+import { best, isUnlocked, save } from './save.js';
+import { mapNodes, NODE_R, PAUSE_BTNS, STAGE_BTN, STAGE_CLOSE, STAGE_OPTS, stageCards } from './ui.js';
+import { STAGES, TYPE_NAMES, autoStage } from './quiz.js';
 import { drawQuiz } from './quizdraw.js';
 import { ctx, scale, el, rrect, txt, starShape, cloud, drawFox } from './gfx.js';
 
@@ -298,6 +299,66 @@ function drawMap() {
   if (Math.sin(time * 4) > -.4) txt(isTouch && !padActive ? 'Tippe auf eine Welt' : '◀ ▶ wählen   ' + (padActive ? 'A' : 'Leertaste') + ' = los!', W / 2, H - 40, 34, '#fff');
 }
 
+/* ---------- Lernstufe ---------- */
+const stageName = v => v === 'auto' ? 'Automatisch' : STAGES[v - 1].name;
+// Büchlein-Symbol mit 1–4 Punkten (Stufe) bzw. Zauberstern (automatisch)
+function stageIcon(v, x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = '#ff8a2a'; rrect(-26, -20, 26, 40, 5); ctx.fill(); ctx.fillStyle = '#3d8bff'; rrect(0, -20, 26, 40, 5); ctx.fill();
+  ctx.fillStyle = '#fff8e8'; rrect(-22, -16, 20, 32, 3); ctx.fill(); rrect(2, -16, 20, 32, 3); ctx.fill();
+  ctx.restore();
+  if (v === 'auto') starShape(x + 20 * s, y - 18 * s, 13 * s, G.time, '#ffd43b');
+  else for (let i = 0; i < v; i++) { ctx.fillStyle = '#ffb020'; el(x - 12 * s + (i % 2) * 24 * s, y - 7 * s + Math.floor(i / 2) * 14 * s, 5 * s, 5 * s); }
+}
+function drawStageBtn() {
+  const b = STAGE_BTN, focus = G.mapFocus === 'stage';
+  rrect(b.x, b.y, b.w, b.h, 22); ctx.fillStyle = focus ? 'rgba(255,255,255,.97)' : 'rgba(255,255,255,.8)'; ctx.fill();
+  if (focus) { ctx.lineWidth = 7; ctx.strokeStyle = '#ffb020'; ctx.stroke(); }
+  stageIcon(save.stage, b.x + 44, b.y + b.h / 2, 1.05);
+  ctx.font = `800 22px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#3a2560';
+  ctx.fillText('Lernen', b.x + 80, b.y + 32);
+  ctx.font = `800 17px ${FONT}`; ctx.fillStyle = '#6a5a8a';
+  const v = save.stage, sub = v === 'auto' ? 'automatisch' : STAGES[v - 1].name;
+  ctx.fillText(sub, b.x + 80, b.y + 62);
+}
+function drawStagePicker() {
+  const time = G.time;
+  ctx.fillStyle = 'rgba(20,10,40,.88)'; ctx.fillRect(0, 0, W, H);
+  txt('Lernstufe', W / 2, 78, 60, '#ffe066');
+  const c = STAGE_CLOSE; rrect(c.x, c.y, c.w, c.h, 22); ctx.fillStyle = '#ffd0dc'; ctx.fill();
+  ctx.strokeStyle = '#c0304e'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.beginPath();
+  ctx.moveTo(c.x + 26, c.y + 26); ctx.lineTo(c.x + 58, c.y + 58); ctx.moveTo(c.x + 58, c.y + 26); ctx.lineTo(c.x + 26, c.y + 58); ctx.stroke();
+  stageCards().forEach((r, i) => {
+    const v = STAGE_OPTS[i], sel = i === G.stageSel, cur = v === save.stage;
+    rrect(r.x, r.y - (sel ? 8 : 0), r.w, r.h, 26); ctx.fillStyle = sel ? '#fff' : '#fff8e8'; ctx.fill();
+    ctx.lineWidth = sel ? 8 : cur ? 5 : 3; ctx.strokeStyle = sel ? '#ffb020' : cur ? '#3ddc84' : '#d8cbe8'; ctx.stroke();
+    const y0 = r.y - (sel ? 8 : 0);
+    stageIcon(v, r.x + r.w / 2, y0 + 62, 1.5);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#3a2560';
+    ctx.font = `800 ${v === 'auto' ? 24 : 26}px ${FONT}`; ctx.fillText(stageName(v), r.x + r.w / 2, y0 + 128);
+    ctx.font = `800 30px ${FONT}`; ctx.fillStyle = '#ff8a2a';
+    ctx.fillText(v === 'auto' ? 'wächst mit' : STAGES[v - 1].sample, r.x + r.w / 2, y0 + 172);
+    if (v === 'auto') { ctx.fillText('der Welt', r.x + r.w / 2, y0 + 202); }
+    if (cur) { ctx.fillStyle = '#3ddc84'; el(r.x + r.w - 22, y0 + 22, 14, 14); ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(r.x + r.w - 29, y0 + 22); ctx.lineTo(r.x + r.w - 23, y0 + 28); ctx.lineTo(r.x + r.w - 14, y0 + 15); ctx.stroke(); }
+  });
+  // Lernstand (für Eltern)
+  const P0 = { x: 100, y: 400, w: W - 200, h: 290 };
+  rrect(P0.x, P0.y, P0.w, P0.h, 26); ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.fill();
+  ctx.font = `800 26px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#3a2560';
+  ctx.fillText('Lernstand – beim ersten Versuch richtig', P0.x + 26, P0.y + 34);
+  const rows = Object.entries(save.stats).filter(([t, v]) => TYPE_NAMES[t] && v.n > 0).sort((a, b) => b[1].n - a[1].n);
+  if (!rows.length) { ctx.font = `600 24px ${FONT}`; ctx.fillStyle = '#6a5a8a'; ctx.fillText('Noch keine Rätsel gelöst.', P0.x + 26, P0.y + 90); }
+  rows.slice(0, 12).forEach(([t, v], i) => {
+    const col = i % 2, row = Math.floor(i / 2), x = P0.x + 26 + col * (P0.w / 2), y = P0.y + 78 + row * 36;
+    const pct = v.ok / v.n, bw = 200;
+    ctx.font = `800 22px ${FONT}`; ctx.fillStyle = '#3a2560'; ctx.textAlign = 'left'; ctx.fillText(TYPE_NAMES[t], x, y);
+    rrect(x + 170, y - 11, bw, 22, 11); ctx.fillStyle = '#eee6f5'; ctx.fill();
+    rrect(x + 170, y - 11, Math.max(22, bw * pct), 22, 11); ctx.fillStyle = pct >= .75 ? '#3ddc84' : pct >= .5 ? '#ffb020' : '#ff7a7a'; ctx.fill();
+    ctx.font = `800 20px ${FONT}`; ctx.fillStyle = '#6a5a8a'; ctx.fillText(`${Math.round(pct * 100)} %  (${v.n})`, x + 382, y);
+  });
+  if (Math.sin(time * 4) > -.4) txt('◀ ▶ wählen   ' + (padActive ? 'A' : 'Leertaste') + ' = OK', W / 2, 382, 24, '#fff');
+}
+
 /* ---------- Pause-Menü ---------- */
 function playIcon(x, y) { ctx.fillStyle = '#3ddc84'; ctx.beginPath(); ctx.moveTo(x - 22, y - 30); ctx.lineTo(x + 30, y); ctx.lineTo(x - 22, y + 30); ctx.closePath(); ctx.fill(); }
 function mapIcon(x, y) {
@@ -323,7 +384,8 @@ export function draw() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   if (G.state === 'title') { drawTitle(); return; }
   if (G.state === 'win') { drawWin(); return; }
-  if (G.state === 'map') { drawMap(); return; }
+  if (G.state === 'map') { drawMap(); drawStageBtn(); return; }
+  if (G.state === 'stage') { drawMap(); drawStagePicker(); return; }
   const d = G.lvl.def;
   drawBG(d);
   ctx.save(); ctx.translate(-Math.round(G.cam), 0);

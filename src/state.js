@@ -1,7 +1,7 @@
 // Gemeinsamer, veränderlicher Spielzustand. Alle Module lesen/schreiben hier.
 export const G = {
-  state: 'title', // title | map | play | pause | quiz | done | win
-  mapSel: 0, mapFrom: 0, mapT: 1, pauseSel: 0, record: false, quiz: null,
+  state: 'title', // title | map | stage | play | pause | quiz | done | win
+  mapSel: 0, mapFrom: 0, mapT: 1, pauseSel: 0, record: false, quiz: null, mapFocus: 'nodes', stageSel: 0, stageT: 0,
   time: 0, cam: 0, doneT: 0,
   levelIdx: 0, starsGot: 0, run: [],
   lvl: null,

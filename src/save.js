@@ -13,10 +13,10 @@ function load() {
       // alte Dateinamen (bis Schritt 5) übernehmen
       for (const [a, b] of [['welt1', 'sonnenwiese'], ['welt2', 'abendhuegel'], ['welt3', 'sternennacht']])
         if (s.best[a] && !s.best[b]) { s.best[b] = s.best[a]; delete s.best[a]; }
-      return { best: s.best };
+      return { best: s.best, stage: s.stage || 'auto', stats: s.stats || {} };
     }
   } catch (e) {}
-  return { best: {} };
+  return { best: {}, stage: 'auto', stats: {} };
 }
 export const save = load();
 
@@ -35,4 +35,14 @@ export function finishLevel(def, got, total) {
   return true;
 }
 
-export function resetSave() { save.best = {}; persist(); }
+export function resetSave() { save.best = {}; save.stats = {}; persist(); }
+
+// Lernstufe: 'auto' oder 1–4
+export function setStage(v) { save.stage = v; persist(); }
+
+// Lernstand: pro Rätselart { n: Rätsel, ok: beim ersten Versuch richtig }
+export function recordQuiz(type, firstTry) {
+  const s = save.stats[type] || (save.stats[type] = { n: 0, ok: 0 });
+  s.n++; if (firstTry) s.ok++;
+  persist();
+}

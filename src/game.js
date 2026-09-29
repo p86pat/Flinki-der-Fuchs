@@ -7,9 +7,9 @@ import { tile, solid, moveX, moveY, overlap, isWater, isLadder } from './physics
 import { readInput, updateTouchUI } from './input.js';
 import { msg, burst, updateFx } from './fx.js';
 import { draw } from './render.js';
-import { isUnlocked, finishLevel, best } from './save.js';
-import { mapNodes, NODE_R, PAUSE_BTNS, hit, hitCircle, quizButtons, QUIZ_SPEAK, QUIZ_CLOSE } from './ui.js';
-import { makeQuiz } from './quiz.js';
+import { isUnlocked, finishLevel, best, save, setStage, recordQuiz } from './save.js';
+import { mapNodes, NODE_R, PAUSE_BTNS, hit, hitCircle, quizButtons, QUIZ_SPEAK, QUIZ_CLOSE, STAGE_BTN, STAGE_CLOSE, STAGE_OPTS, stageCards } from './ui.js';
+import { makeQuiz, autoStage, STAGES } from './quiz.js';
 import { say, hush } from './speech.js';
 
 function startLevel(i) {
@@ -139,7 +139,8 @@ function update(dt, inp) {
 /* ---------- Lernrätsel ---------- */
 let lastQuizType = null;
 function openQuiz(src) {
-  const q = makeQuiz(G.levelIdx, lastQuizType); lastQuizType = q.type;
+  const stage = save.stage === 'auto' ? autoStage(G.levelIdx) : save.stage;
+  const q = makeQuiz(stage, G.levelIdx / Math.max(1, LEVELS.length - 1), lastQuizType); lastQuizType = q.type;
   G.quiz = { q, src, sel: 0, wrong: [], solved: false, solvedAt: 0, t: 0, shake: 0, shakeI: -1 };
   G.state = 'quiz'; P.vx = 0; sfx.select();
   say(q.say);
@@ -161,7 +162,7 @@ function closeQuiz(solved) {
 function chooseAnswer(i) {
   const Q = G.quiz, q = Q.q;
   if (Q.solved || Q.wrong.includes(i)) return;
-  if (i === q.correct) { Q.solved = true; Q.solvedAt = Q.t; sfx.check(); say('Super!'); }
+  if (i === q.correct) { Q.solved = true; Q.solvedAt = Q.t; sfx.check(); say('Super!'); recordQuiz(q.type, Q.wrong.length === 0); }
   else {
     Q.wrong.push(i); Q.shake = .4; Q.shakeI = i; sfx.nope(); say('Probier nochmal!');
     const free = q.options.map((_, k) => k).filter(k => !Q.wrong.includes(k));
@@ -200,16 +201,42 @@ function mapMove(to) {
 function updateMap(d, inp) {
   G.time += d; G.mapT = Math.min(1, G.mapT + d * 3.5);
   if (inp.tap) {
+    if (hit(inp.tap, STAGE_BTN)) { openStage(); return; }
     const nodes = mapNodes(LEVELS.length);
     const i = nodes.findIndex(n => hitCircle(inp.tap, n, NODE_R + 14));
     if (i < 0) return;
+    G.mapFocus = 'nodes';
     if (i === G.mapSel) startLevel(i); else mapMove(i);
     return;
   }
   if (inp.startPressed) { G.state = 'title'; return; }
+  // ▲ wählt den Lernstufen-Knopf, ▼ zurück zu den Welten
+  if (inp.upPressed && G.mapFocus !== 'stage') { G.mapFocus = 'stage'; sfx.select(); return; }
+  if (G.mapFocus === 'stage') {
+    if (inp.downPressed || inp.leftPressed || inp.rightPressed) { G.mapFocus = 'nodes'; sfx.select(); }
+    else if (inp.jumpPressed || inp.confirmPressed) openStage();
+    return;
+  }
   if (inp.leftPressed) mapMove(G.mapSel - 1);
   else if (inp.rightPressed) mapMove(G.mapSel + 1);
   else if (inp.confirmPressed && G.mapT >= 1) startLevel(G.mapSel);
+}
+
+/* ---------- Lernstufe wählen (mit Lernstand für Eltern) ---------- */
+function openStage() { G.state = 'stage'; G.stageSel = Math.max(0, STAGE_OPTS.indexOf(save.stage)); G.stageT = 0; sfx.select(); }
+function updateStage(d, inp) {
+  G.time += d; G.stageT += d;
+  const choose = i => { setStage(STAGE_OPTS[i]); sfx.check(); G.state = 'map'; G.mapFocus = 'nodes'; };
+  if (inp.tap) {
+    const i = stageCards().findIndex(c => hit(inp.tap, c));
+    if (i >= 0) choose(i); else if (hit(inp.tap, STAGE_CLOSE)) G.state = 'map';
+    return;
+  }
+  if (G.stageT < .25) return;
+  if (inp.startPressed) { G.state = 'map'; return; }
+  if (inp.leftPressed && G.stageSel > 0) { G.stageSel--; sfx.select(); }
+  else if (inp.rightPressed && G.stageSel < STAGE_OPTS.length - 1) { G.stageSel++; sfx.select(); }
+  else if (inp.confirmPressed) choose(G.stageSel);
 }
 
 /* ---------- Pause-Menü: [weiter] [Karte] ---------- */
@@ -240,6 +267,7 @@ function frame(now) {
     }
   }
   else if (G.state === 'map') updateMap(d, inp);
+  else if (G.state === 'stage') updateStage(d, inp);
   else if (G.state === 'play') {
     if (inp.startPressed) { G.state = 'pause'; G.pauseSel = 0; }
     else {

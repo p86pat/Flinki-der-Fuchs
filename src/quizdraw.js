@@ -1,7 +1,7 @@
 /* ---------- Rätsel-Fenster zeichnen ---------- */
 import { W, H, FONT } from './config.js';
 import { ctx, el, rrect, starShape } from './gfx.js';
-import { drawPic, drawShape } from './pics.js';
+import { drawPic, drawShape, drawCoin, drawClock } from './pics.js';
 import { QUIZ_PANEL, QUIZ_SPEAK, QUIZ_CLOSE, quizButtons } from './ui.js';
 
 const INK = '#3a2560';
@@ -41,32 +41,73 @@ function objectGrid(obj, n, cx, cy, maxS, crossFrom = n) {
 
 function content(q) {
   const cy = 320;
-  if (q.type === 'count') objectGrid(q.obj, q.n, W / 2, cy, 90);
-  else if (q.type === 'plus' || q.type === 'minus') {
-    const op = q.type === 'plus' ? '+' : '−';
-    label(`${q.a} ${op} ${q.b} = ?`, W / 2, q.a + q.b <= 10 || q.type === 'minus' && q.a <= 10 ? 235 : cy, 96);
-    if (q.type === 'plus' && q.a + q.b <= 10) {
-      objectGrid('apfel', q.a, W / 2 - 240, 390, 66);
-      label('+', W / 2, 390, 70);
-      objectGrid('apfel', q.b, W / 2 + 240, 390, 66);
-    } else if (q.type === 'minus' && q.a <= 10) {
-      objectGrid('apfel', q.a, W / 2, 390, 66, q.a - q.b);
+  switch (q.type) {
+    case 'count': objectGrid(q.obj, q.n, W / 2, cy, 90); break;
+    case 'compare': // zwei Gruppen links und rechts
+      rrect(W / 2 - 3, 170, 6, 290, 3); ctx.fillStyle = '#e4d8f0'; ctx.fill();
+      objectGrid(q.obj, q.a, W / 2 - 240, cy, 62); objectGrid(q.obj, q.b, W / 2 + 240, cy, 62); break;
+    case 'plus': case 'minus': case 'double': case 'times': {
+      const op = { plus: '+', minus: '−', double: '+', times: '×' }[q.type];
+      const small = (q.type === 'plus' || q.type === 'double') ? q.a + q.b <= 10 : q.type === 'minus' ? q.a <= 10 : q.a * q.b <= 20;
+      label(`${q.a} ${op} ${q.b} = ?`, W / 2, small ? 235 : cy, 96);
+      if (!small) break;
+      if (q.type === 'minus') objectGrid('apfel', q.a, W / 2, 390, 66, q.a - q.b);
+      else if (q.type === 'times') { // q.a Reihen mit je q.b Punkten
+        const s = Math.min(30, 200 / Math.max(q.a, q.b));
+        for (let r = 0; r < q.a; r++) for (let c = 0; c < q.b; c++) { ctx.fillStyle = '#ff8a2a'; el(W / 2 - (q.b - 1) * s / 2 + c * s, 390 - (q.a - 1) * s / 2 + r * s, s * .38, s * .38); }
+      } else {
+        objectGrid('apfel', q.a, W / 2 - 240, 390, 66); label('+', W / 2, 390, 70); objectGrid('apfel', q.b, W / 2 + 240, 390, 66);
+      }
+      break;
     }
-  } else if (q.type === 'pattern') {
-    const n = q.seq.length + 1, gap = Math.min(130, 860 / n), x0 = W / 2 - (n - 1) * gap / 2;
-    q.seq.forEach((k, i) => drawShape(k, x0 + i * gap, cy, gap * .36));
-    const x = x0 + (n - 1) * gap;
-    rrect(x - gap * .45, cy - gap * .45, gap * .9, gap * .9, 16); ctx.setLineDash([10, 8]); ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.stroke(); ctx.setLineDash([]);
-    label('?', x, cy + 4, gap * .6);
-  } else if (q.type === 'letter') {
-    drawPic(q.word, W / 2, cy, 230);
+    case 'missing': {
+      const n = q.seq.length, gap = 150, x0 = W / 2 - (n - 1) * gap / 2;
+      q.seq.forEach((v, i) => {
+        const x = x0 + i * gap;
+        rrect(x - 62, cy - 55, 124, 110, 22); ctx.fillStyle = i === q.hole ? '#fff' : '#ffe9a8'; ctx.fill();
+        if (i === q.hole) { ctx.setLineDash([10, 8]); ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.stroke(); ctx.setLineDash([]); label('?', x, cy + 6, 80); }
+        else label(String(v), x, cy + 6, v >= 100 ? 56 : 72);
+      });
+      break;
+    }
+    case 'clock': drawClock(q.h, q.m, W / 2, cy, 140); break;
+    case 'money': {
+      const n = q.coins.length, gap = Math.min(170, 860 / n), x0 = W / 2 - (n - 1) * gap / 2;
+      q.coins.forEach((c, i) => drawCoin(c, x0 + i * gap, cy, Math.min(1.7, gap / 100)));
+      break;
+    }
+    case 'read':
+      if (q.show === 'word') label(q.word, W / 2, cy, 120);
+      else drawPic(q.word, W / 2, cy, 230);
+      break;
+    case 'syllables':
+      drawPic(q.word, W / 2, cy - 30, 190); label(q.word, W / 2, cy + 125, 64);
+      break;
+    case 'pattern': {
+      const n = q.seq.length + 1, gap = Math.min(130, 860 / n), x0 = W / 2 - (n - 1) * gap / 2;
+      q.seq.forEach((k, i) => drawShape(k, x0 + i * gap, cy, gap * .36));
+      const x = x0 + (n - 1) * gap;
+      rrect(x - gap * .45, cy - gap * .45, gap * .9, gap * .9, 16); ctx.setLineDash([10, 8]); ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.stroke(); ctx.setLineDash([]);
+      label('?', x, cy + 4, gap * .6);
+      break;
+    }
+    case 'letter': drawPic(q.word, W / 2, cy, 230); break;
   }
+}
+
+function arrow(x, y, dir) {
+  ctx.fillStyle = '#3d8bff'; ctx.beginPath();
+  ctx.moveTo(x + dir * 50, y); ctx.lineTo(x - dir * 5, y - 44); ctx.lineTo(x - dir * 5, y - 18); ctx.lineTo(x - dir * 50, y - 18);
+  ctx.lineTo(x - dir * 50, y + 18); ctx.lineTo(x - dir * 5, y + 18); ctx.lineTo(x - dir * 5, y + 44); ctx.closePath(); ctx.fill();
 }
 
 function answer(q, i, b) {
   const x = b.x + b.w / 2, y = b.y + b.h / 2, v = q.options[i];
-  if (q.kind === 'number') label(String(v), x, y + 6, 104);
+  if (q.kind === 'number') label(String(v), x, y + 6, String(v).length > 2 ? 84 : 104);
   else if (q.kind === 'letter') label(v, x, y + 8, 116);
+  else if (q.kind === 'text') label(v, x, y + 6, v.length <= 4 ? 72 : v.length <= 6 ? 56 : 44);
+  else if (q.kind === 'pic') drawPic(v, x, y, 118);
+  else if (q.kind === 'side') arrow(x, y, v === 'links' ? -1 : 1);
   else drawShape(v, x, y, 46);
 }
 

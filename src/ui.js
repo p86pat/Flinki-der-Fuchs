@@ -30,3 +30,12 @@ export function quizButtons(n) {
   const w = 220, h = 150, gap = 44, x0 = W / 2 - (n * w + (n - 1) * gap) / 2;
   return Array.from({ length: n }, (_, i) => ({ x: x0 + i * (w + gap), y: 500, w, h }));
 }
+
+// Lernstufe: Knopf auf der Karte und Auswahl-Fenster (Karten: auto, 1–4)
+export const STAGE_BTN = { x: 20, y: 20, w: 214, h: 94 };
+export const STAGE_CLOSE = { x: W - 240, y: 30, w: 84, h: 84 };
+export const STAGE_OPTS = ['auto', 1, 2, 3, 4];
+export function stageCards() {
+  const w = 196, h = 230, gap = 20, x0 = W / 2 - (5 * w + 4 * gap) / 2;
+  return STAGE_OPTS.map((_, i) => ({ x: x0 + i * (w + gap), y: 140, w, h }));
+}

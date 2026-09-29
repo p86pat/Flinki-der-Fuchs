@@ -3,7 +3,7 @@
 Ein Jump-and-Run-Spiel für Kinder von 6 bis 8 Jahren, als reine Web-App (Vanilla JS, ES-Module, kein Build-Schritt).
 Gedacht für Safari auf dem iPad, gespiegelt per AirPlay auf den TV und gespielt mit einem Bluetooth-Controller.
 
-> **Stand:** Schritt 6: 8 Welten mit Leitern, Wasser, fahrenden Plattformen, versteckten Sternen und Lernrätseln.
+> **Stand:** Schritt 7: Lernstufen (Kindergarten bis 3. Klasse) mit 13 Rätselarten. Davor Schritt 6: 8 Welten mit Leitern, Wasser, fahrenden Plattformen, versteckten Sternen und Lernrätseln.
 > Als Nächstes: Einstellungen & Musik, Level-Editor, 2-Spieler-Modus. 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
 
 ## Starten (lokal)
@@ -53,10 +53,19 @@ Dann `http://localhost:8000/` öffnen. Vom iPad aus im selben WLAN: `http://<IP-
 In den Welten stehen **Rätsel-Tore** `?` auf dem Weg und **Rätsel-Kisten** `K` daneben.
 Läuft Flinki hinein, öffnet sich ein grosses Rätsel-Fenster:
 
-- **Arten:** Zählen (Äpfel, Sterne, Fische, Bälle in Fünferreihen), Plus- und Minusaufgaben mit Äpfeln als Hilfe,
-  Muster fortsetzen (Formen und Farben), Anlaute (Bild → Anfangsbuchstabe).
-- **Schwierigkeit steigt mit den Welten:** Welt 1 zählen bis 5, Muster AB und 2 Buchstaben zur Auswahl.
-  Ab Welt 2 kommt Plus dazu, ab Welt 3 Minus, später geht es bis 20 und die Muster werden länger (ABC, AABB).
+- **Lernstufe wählen:** Auf der Weltkarte oben links «Lernen» antippen (Controller: ▲ und A).
+
+  | Stufe | Rätsel |
+  |---|---|
+  | Automatisch | Stufe wächst mit der Welt (Welt 1–2 Kindergarten, 3–5 1. Klasse, 6–8 2. Klasse) |
+  | Kindergarten | zählen bis 8, mehr/weniger, Plus bis 5 mit Bildern, Muster, Anlaute (2 Buchstaben) |
+  | 1. Klasse | zählen bis 12, Plus/Minus bis 10, fehlende Zahl bis 20, Uhr (volle Stunde), Wörter lesen, Anlaute |
+  | 2. Klasse | Plus/Minus bis 20, Verdoppeln, Zahlenreihen (2er, 5er, 10er), Uhr (halbe Stunde), Geld (Franken), Silben, Wort → Bild |
+  | 3. Klasse | Plus/Minus bis 100, Einmaleins, Zahlenreihen bis 100, Uhr (Viertelstunde), Geld mit Rappen, Silben |
+
+  Innerhalb einer Stufe werden die Rätsel in späteren Welten etwas schwerer.
+- **Lernstand für Eltern:** Im Lernstufen-Fenster steht pro Rätselart, wie oft es beim ersten Versuch geklappt hat
+  (grün ab 75 %, orange ab 50 %).
 - **Vorlesen:** Die Frage wird vorgelesen, der 🔊-Knopf wiederholt sie. So geht es auch ohne Lesen.
   Auf dem iPad eine schöne deutsche Stimme laden: Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Deutsch.
 - **Falsch ist nicht schlimm:** Die falsche Antwort wird grau, «Probier nochmal!», man versucht einfach weiter.
