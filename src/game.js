@@ -3,7 +3,7 @@ import { W, H, T, STEP } from './config.js';
 import { G, P } from './state.js';
 import { sfx } from './audio.js';
 import { LEVELS, makeLevel, loadLevels } from './levels.js';
-import { tile, solid, moveX, moveY, overlap } from './physics.js';
+import { tile, solid, moveX, moveY, overlap, isWater, isLadder } from './physics.js';
 import { readInput, updateTouchUI } from './input.js';
 import { msg, burst, updateFx } from './fx.js';
 import { draw } from './render.js';
@@ -15,7 +15,7 @@ import { say, hush } from './speech.js';
 function startLevel(i) {
   G.levelIdx = i; G.lvl = makeLevel(i);
   const lvl = G.lvl;
-  Object.assign(P, { x: lvl.sx, y: lvl.sy, vx: 0, vy: 0, face: 1, inv: 0, sq: 0, buffer: 0, coyote: 0, bounced: false, rx: lvl.sx, ry: lvl.sy });
+  Object.assign(P, { x: lvl.sx, y: lvl.sy, vx: 0, vy: 0, face: 1, inv: 0, sq: 0, buffer: 0, coyote: 0, bounced: false, rx: lvl.sx, ry: lvl.sy, climb: false, swim: false, plat: null });
   G.cam = 0; G.parts = []; G.msgs = []; G.starsGot = 0; G.state = 'play';
   msg(LEVELS[i].name, P.x + 17, P.y - 40, '#fff');
 }
@@ -23,29 +23,77 @@ function startLevel(i) {
 function update(dt, inp) {
   const lvl = G.lvl;
   G.time += dt;
+  // Bewegliche Plattformen fahren – und nehmen Flinki mit
+  for (const e of lvl.ents) if (e.t === 'plat') {
+    const ox = e.x, oy = e.y;
+    e.x += e.vx * dt; e.y += e.vy * dt;
+    if (e.x < e.minX) { e.x = e.minX; e.vx = Math.abs(e.vx); } else if (e.x > e.maxX) { e.x = e.maxX; e.vx = -Math.abs(e.vx); }
+    if (e.y < e.minY) { e.y = e.minY; e.vy = Math.abs(e.vy); } else if (e.y > e.maxY) { e.y = e.maxY; e.vy = -Math.abs(e.vy); }
+    e.dx = e.x - ox; e.dy = e.y - oy;
+    if (P.plat === e) { moveX(P, e.dx); P.y += e.dy; }
+  }
+
   // Spieler
-  const max = 340, acc = P.onGround ? 2600 : 1800;
+  const cx = P.x + P.w / 2;
+  const onLadder = isLadder(cx, P.y + P.h - 2) || isLadder(cx, P.y + 6);
+  const jumpHeld = inp.jump || (inp.upJ && !onLadder);
+  P.swim = isWater(cx, P.y + P.h * .55);
   const moving = inp.left !== inp.right;
-  if (inp.left && !inp.right) { P.vx -= acc * dt; P.face = -1; }
-  else if (inp.right && !inp.left) { P.vx += acc * dt; P.face = 1; }
-  else { const f = (P.onGround ? 2600 : 900) * dt; P.vx = Math.abs(P.vx) <= f ? 0 : P.vx - Math.sign(P.vx) * f; }
-  P.vx = Math.max(-max, Math.min(max, P.vx));
-  // Jump Buffer + Coyote Time
-  P.buffer -= dt; P.coyote = P.onGround ? .1 : P.coyote - dt;
-  if (P.buffer > 0 && P.coyote > 0) { P.vy = -950; P.buffer = 0; P.coyote = 0; P.onGround = false; P.bounced = false; P.sq = -.22; sfx.jump(); }
-  if (!inp.jump && !P.bounced && P.vy < -360) P.vy = -360; // variable Sprunghöhe
-  P.vy = Math.min(1100, P.vy + 2300 * dt);
-  const wasGround = P.onGround;
-  moveX(P, P.vx * dt); moveY(P, P.vy * dt);
-  if (P.onGround) { P.bounced = false; if (!wasGround) P.sq = .2; }
+
+  // Leiter greifen: hoch drücken (oder Sprung halten im Fallen); oben stehend: runter drücken
+  if (!P.climb && onLadder && (inp.up || (inp.jump && P.vy > -150) || (inp.down && !P.onGround))) P.climb = true;
+  if (!P.climb && P.onGround && inp.down && isLadder(cx, P.y + P.h + 4)) { P.climb = true; P.y += 3; }
+  if (P.climb && !onLadder && !isLadder(cx, P.y + P.h + 2)) P.climb = false;
+
+  if (P.climb) {
+    const dir = (inp.down ? 1 : 0) - (inp.up || inp.jump ? 1 : 0);
+    P.vy = dir * 240; P.vx = (inp.right ? 1 : 0) * 150 - (inp.left ? 1 : 0) * 150;
+    if (moving) P.face = inp.left ? -1 : 1;
+    P.buffer = 0; P.coyote = 0; P.bounced = false;
+    moveX(P, P.vx * dt); moveY(P, P.vy * dt);
+    if (P.onGround && dir >= 0) P.climb = false; // unten angekommen
+    P.walk += dir || moving ? dt : 0;
+  } else {
+    const max = P.swim ? 220 : 340, acc = P.onGround ? 2600 : P.swim ? 1400 : 1800;
+    if (inp.left && !inp.right) { P.vx -= acc * dt; P.face = -1; }
+    else if (inp.right && !inp.left) { P.vx += acc * dt; P.face = 1; }
+    else { const f = (P.onGround ? 2600 : 900) * dt; P.vx = Math.abs(P.vx) <= f ? 0 : P.vx - Math.sign(P.vx) * f; }
+    P.vx = Math.max(-max, Math.min(max, P.vx));
+    P.buffer -= dt; P.coyote = P.onGround ? .1 : P.coyote - dt;
+    if (P.swim) {
+      // Schwimmen: jeder Sprung ist ein Schwimmzug; an der Oberfläche hüpft Flinki hinaus
+      if (P.buffer > 0) {
+        const surface = !isWater(cx, P.y - 4);
+        P.vy = surface ? -820 : -360; P.buffer = 0; P.bounced = surface; P.sq = -.15; sfx.swim();
+        burst(cx, P.y + P.h / 2, 'rgba(255,255,255,.8)', 5, 90);
+      }
+      P.vy = Math.min(170, P.vy + 700 * dt);
+      if (Math.random() < dt * 2) burst(cx + P.face * 14, P.y + 10, 'rgba(255,255,255,.7)', 1, 30);
+    } else {
+      // Jump Buffer + Coyote Time
+      if (P.buffer > 0 && P.coyote > 0) { P.vy = -950; P.buffer = 0; P.coyote = 0; P.onGround = false; P.bounced = false; P.sq = -.22; sfx.jump(); }
+      if (!jumpHeld && !P.bounced && P.vy < -360) P.vy = -360; // variable Sprunghöhe
+      P.vy = Math.min(1100, P.vy + 2300 * dt);
+    }
+    const wasGround = P.onGround;
+    const oldBottom = P.y + P.h;
+    moveX(P, P.vx * dt); moveY(P, P.vy * dt);
+    // Auf Plattformen landen (von oben, wie beim Brett)
+    P.plat = null;
+    if (P.vy >= 0) for (const e of lvl.ents) if (e.t === 'plat' && P.x + P.w > e.x + 4 && P.x < e.x + e.w - 4 && oldBottom <= e.y + 2 && P.y + P.h >= e.y) {
+      P.y = e.y - P.h; P.vy = 0; P.onGround = true; P.plat = e; break;
+    }
+    if (P.onGround) { P.bounced = false; if (!wasGround) P.sq = .2; }
+    P.walk += (moving && P.onGround) || P.swim ? dt : 0;
+  }
   P.sq *= Math.pow(.0005, dt);
-  P.walk += moving && P.onGround ? dt : 0;
   if (P.inv > 0) P.inv -= dt;
 
   // Objekte
   for (const e of lvl.ents) {
     if (e.t === 'star' && !e.got) {
       const dx = (P.x + P.w / 2) - e.x, dy = (P.y + P.h / 2) - e.y;
+      if (e.hidden && !e.seen && dx * dx + dy * dy < 150 * 150) { e.seen = true; sfx.select(); burst(e.x, e.y, '#ffffff', 8, 120); }
       if (dx * dx + dy * dy < 36 * 36) { e.got = true; G.starsGot++; sfx.star(); burst(e.x, e.y, '#ffd43b', 10, 220); }
     } else if (e.t === 'snail') {
       if (e.dead > 0) { e.dead -= dt; continue; }
@@ -82,7 +130,7 @@ function update(dt, inp) {
     }
   }
   // Runterfallen → zurück zum letzten Checkpoint
-  if (P.y > H + 80) { Object.assign(P, { x: P.rx, y: P.ry, vx: 0, vy: 0, inv: 1 }); sfx.oops(); msg('Hoppla! Nochmal!', P.x + 17, P.y - 30, '#fff'); }
+  if (P.y > H + 80) { Object.assign(P, { x: P.rx, y: P.ry, vx: 0, vy: 0, inv: 1, climb: false, plat: null }); sfx.oops(); msg('Hoppla! Nochmal!', P.x + 17, P.y - 30, '#fff'); }
   updateFx(dt);
   const target = Math.max(0, Math.min(lvl.w * T - W, P.x - W * .4));
   G.cam += (target - G.cam) * Math.min(1, dt * 7);
@@ -195,7 +243,8 @@ function frame(now) {
   else if (G.state === 'play') {
     if (inp.startPressed) { G.state = 'pause'; G.pauseSel = 0; }
     else {
-      if (inp.jumpPressed) P.buffer = .14;
+      const atLadder = isLadder(P.x + P.w / 2, P.y + P.h - 2) || isLadder(P.x + P.w / 2, P.y + 6);
+      if (inp.jumpPressed || (inp.upJPressed && !atLadder)) P.buffer = .14;
       accT += d; while (accT >= STEP) { update(STEP, inp); accT -= STEP; if (G.state !== 'play') break; }
     }
   }

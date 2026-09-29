@@ -27,7 +27,8 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 
 const KEYMAP = {
   left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'],
-  jump: ['Space', 'ArrowUp', 'KeyW'], start: ['Escape', 'KeyP'], enter: ['Enter']
+  jump: ['Space'], up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
+  start: ['Escape', 'KeyP'], enter: ['Enter']
 };
 const held = n => KEYMAP[n].some(c => keys[c]);
 const hitNow = n => KEYMAP[n].some(c => hitKeys[c]);
@@ -36,28 +37,33 @@ const hitNow = n => KEYMAP[n].some(c => hitKeys[c]);
 export function readInput() {
   let left = held('left') || touch.l, right = held('right') || touch.r;
   let jump = held('jump') || touch.j;
+  let up = held('up'), down = held('down'), upJ = up; // upJ: «hoch» als Sprung (Tastatur, Steuerkreuz – nicht Stick)
   let start = held('start') || touch.p, confirm = held('enter');
   let pa = false;
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
   for (const p of pads) { if (!p) continue; pa = true;
-    const bt = i => p.buttons[i] && p.buttons[i].pressed, ax = p.axes[0] || 0;
+    const bt = i => p.buttons[i] && p.buttons[i].pressed, ax = p.axes[0] || 0, ay = p.axes[1] || 0;
     if (ax < -.4 || bt(14)) left = true; if (ax > .4 || bt(15)) right = true;
-    if (bt(0) || bt(1) || bt(2) || bt(3) || bt(12)) jump = true;
+    if (ay < -.6 || bt(12)) up = true; if (bt(12)) upJ = true; if (ay > .6 || bt(13)) down = true;
+    if (bt(0) || bt(1) || bt(2) || bt(3)) jump = true;
     if (bt(9) || bt(8)) start = true;
   }
   padActive = pa; confirm = confirm || jump;
   // Flanke: jetzt gedrückt und vorher nicht – oder ein kurzer Tipper zwischen zwei Frames
   const edge = (now, was, n) => (now && !was) || hitNow(n);
   const jumpPressed = edge(jump, prev.jump, 'jump');
+  const upPressed = edge(up, prev.up, 'up'), upJPressed = edge(upJ, prev.upJ, 'up');
   const out = {
     left: left || hitNow('left'), right: right || hitNow('right'), jump: jump || hitNow('jump'),
+    up: up || hitNow('up'), down: down || hitNow('down'), upPressed, downPressed: edge(down, prev.down, 'down'),
+    upJ: upJ || hitNow('up'), upJPressed,
     jumpPressed, startPressed: edge(start, prev.start, 'start'),
-    confirmPressed: (confirm && !prev.confirm) || hitNow('enter') || jumpPressed || tapped,
+    confirmPressed: (confirm && !prev.confirm) || hitNow('enter') || jumpPressed || upJPressed || tapped,
     leftPressed: edge(left, prev.left, 'left'), rightPressed: edge(right, prev.right, 'right'),
     tap: tapPos // null oder {x,y} – nur im Frame des Antippens
   };
   if (out.confirmPressed || out.jumpPressed) audio();
-  prev = { jump, start, confirm, left, right };
+  prev = { jump, start, confirm, left, right, up, down, upJ };
   for (const c in hitKeys) delete hitKeys[c];
   tapped = false; tapPos = null; return out;
 }

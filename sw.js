@@ -3,7 +3,7 @@
  * wird die Datei neu geladen. Änderungen auf dem Server sind also beim übernächsten
  * Start sichtbar. Neue Dateien bitte in FILES eintragen und VERSION erhöhen.
  */
-const VERSION = 'flinki-v5';
+const VERSION = 'flinki-v6';
 const FILES = [
   './',
   './index.html',
@@ -27,9 +27,14 @@ const FILES = [
   './src/pics.js',
   './src/speech.js',
   './levels/index.json',
-  './levels/welt1.txt',
-  './levels/welt2.txt',
-  './levels/welt3.txt',
+  './levels/sonnenwiese.txt',
+  './levels/abendhuegel.txt',
+  './levels/kletterwald.txt',
+  './levels/sternennacht.txt',
+  './levels/seeufer.txt',
+  './levels/wolkenland.txt',
+  './levels/bergpfad.txt',
+  './levels/regenbogenland.txt',
   './assets/fonts/baloo2-latin.woff2',
   './assets/icons/icon-180.png',
   './assets/icons/icon-192.png',

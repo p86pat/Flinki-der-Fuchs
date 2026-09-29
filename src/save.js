@@ -9,7 +9,12 @@ const ALL = new URLSearchParams(location.search).has('alle');
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY));
-    if (s && typeof s.best === 'object' && s.best) return { best: s.best };
+    if (s && typeof s.best === 'object' && s.best) {
+      // alte Dateinamen (bis Schritt 5) übernehmen
+      for (const [a, b] of [['welt1', 'sonnenwiese'], ['welt2', 'abendhuegel'], ['welt3', 'sternennacht']])
+        if (s.best[a] && !s.best[b]) { s.best[b] = s.best[a]; delete s.best[a]; }
+      return { best: s.best };
+    }
   } catch (e) {}
   return { best: {} };
 }

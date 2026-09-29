@@ -23,6 +23,7 @@ export const sfx = {
   ouch: () => tone(260, .22, 'sawtooth', .06, 120),
   check: () => [523, 659, 784].forEach((f, i) => tone(f, .14, 'triangle', .14, 0, i * .09)),
   oops: () => tone(500, .35, 'triangle', .12, 200),
+  swim: () => tone(300, .12, 'sine', .08, 520),
   select: () => tone(660, .07, 'triangle', .1, 880),
   nope: () => tone(180, .18, 'triangle', .12, 140),
   win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, .18, 'triangle', .15, 0, i * .12))

@@ -19,7 +19,9 @@ export function moveY(e, dy) {
   if (dy > 0) {
     const ty = Math.floor((e.y + e.h - .01) / T);
     for (let tx = l; tx <= r; tx++) { const c = tile(tx, ty);
-      if (solid(c) || (c === '-' && oldBottom <= ty * T + .5)) { e.y = ty * T - e.h; e.vy = 0; e.onGround = true; return; } }
+      const top = oldBottom <= ty * T + .5;
+      // fest, Brett oder oberste Leitersprosse (nur von oben)
+      if (solid(c) || (c === '-' && top) || (c === 'H' && top && !e.climb && tile(tx, ty - 1) !== 'H')) { e.y = ty * T - e.h; e.vy = 0; e.onGround = true; return; } }
   } else if (dy < 0) {
     const ty = Math.floor(e.y / T);
     for (let tx = l; tx <= r; tx++) if (solid(tile(tx, ty))) { e.y = (ty + 1) * T; e.vy = 0; return; }
@@ -27,3 +29,6 @@ export function moveY(e, dy) {
 }
 
 export const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+export const isWater = (px, py) => tile(Math.floor(px / T), Math.floor(py / T)) === '~';
+export const isLadder = (px, py) => tile(Math.floor(px / T), Math.floor(py / T)) === 'H';

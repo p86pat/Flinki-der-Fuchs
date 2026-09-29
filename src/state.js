@@ -8,4 +8,4 @@ export const G = {
   parts: [], msgs: []
 };
 
-export const P = { x: 0, y: 0, w: 34, h: 42, vx: 0, vy: 0, onGround: false, face: 1, coyote: 0, buffer: 0, inv: 0, sq: 0, bounced: false, walk: 0, rx: 0, ry: 0 };
+export const P = { x: 0, y: 0, w: 34, h: 42, vx: 0, vy: 0, onGround: false, face: 1, coyote: 0, buffer: 0, inv: 0, sq: 0, bounced: false, walk: 0, rx: 0, ry: 0, climb: false, swim: false, plat: null };

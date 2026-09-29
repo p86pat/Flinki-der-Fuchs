@@ -3,8 +3,8 @@
 Ein Jump-and-Run-Spiel für Kinder von 6 bis 8 Jahren, als reine Web-App (Vanilla JS, ES-Module, kein Build-Schritt).
 Gedacht für Safari auf dem iPad, gespiegelt per AirPlay auf den TV und gespielt mit einem Bluetooth-Controller.
 
-> **Stand:** Schritt 5: Modulstruktur, PWA/offline, Level als Text-Maps, Weltkarte mit Speicherstand, Lernrätsel.
-> 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
+> **Stand:** Schritt 6: 8 Welten mit Leitern, Wasser, fahrenden Plattformen, versteckten Sternen und Lernrätseln.
+> Als Nächstes: Einstellungen & Musik, Level-Editor, 2-Spieler-Modus. 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
 
 ## Starten (lokal)
 
@@ -22,6 +22,8 @@ Dann `http://localhost:8000/` öffnen. Vom iPad aus im selben WLAN: `http://<IP-
 |-------------------|-----------------------------------|-----------------------|------------------|
 | Laufen            | Linker Stick / Steuerkreuz ◀ ▶    | ← → oder A / D        | ◀ ▶ Knöpfe       |
 | Springen          | A / B / X / Y (jede Taste) oder ▲ | Leertaste, ↑ oder W   | «Hopp»           |
+| Leiter hoch/runter | Stick/Steuerkreuz ▲ ▼ (oder Sprung halten = hoch) | ↑ ↓ oder W / S | «Hopp» halten = hoch |
+| Schwimmen         | Springen = Schwimmzug, an der Oberfläche hüpft Flinki hinaus | Leertaste | «Hopp» |
 | Bestätigen        | wie Springen                      | Enter / Leertaste     | Bildschirm tippen|
 | Pause             | Start / Options / + (auch Select) | Esc oder P            | ❚❚ oben in der Mitte |
 | Karte: Welt wählen | ◀ ▶                              | ← →                   | Welt antippen (nochmal tippen = los) |
@@ -32,6 +34,19 @@ Dann `http://localhost:8000/` öffnen. Vom iPad aus im selben WLAN: `http://<IP-
 - Die Touch-Knöpfe erscheinen nur auf Touch-Geräten, und nur solange kein Controller aktiv ist.
 - Längeres Drücken der Sprungtaste lässt Flinki höher springen. Coyote Time (0,1 s) und
   Jump Buffer (0,14 s) machen das Springen nachsichtig.
+
+## Die 8 Welten
+
+| # | Welt | Neu dazu |
+|---|------|----------|
+| 1 | Sonnenwiese | laufen, springen, Schnecken, Sprungpilz, erstes Rätsel |
+| 2 | Abendhügel | versteckte Sterne |
+| 3 | Kletterwald | Leitern |
+| 4 | Sternennacht | fahrende Plattform ↔ |
+| 5 | Seeufer | Wasser & Schwimmen |
+| 6 | Wolkenland | Aufzüge ↕ und Plattform-Brücken |
+| 7 | Bergpfad | alles gemischt |
+| 8 | Regenbogenland | Finale mit zwei Rätsel-Toren |
 
 ## Lernrätsel
 
@@ -90,13 +105,15 @@ src/
   speech.js         Vorlesen (Web Speech API, auf dem iPad offline)
 levels/
   index.json        Reihenfolge der Welten
-  welt1.txt …       ein Level pro Datei (Text-Map)
+  sonnenwiese.txt … ein Level pro Datei (Text-Map)
 assets/
   fonts/            Schrift «Baloo 2» (SIL Open Font License, siehe OFL.txt)
   icons/            App-Icons (selbst gezeichnet)
 tools/
   icons.html        zeichnet die App-Icons (im Browser öffnen → «PNG speichern»)
   make-icons.mjs    dasselbe automatisch: node tools/make-icons.mjs (braucht Playwright)
+  check_levels.py   prüft alle Level auf Erreichbarkeit (python3 tools/check_levels.py)
+  build_levels.py   hat die Welten 3, 5–8 erzeugt (nur als Hilfe, die .txt-Dateien sind die Quelle)
 ```
 
 Alle Pfade sind **relativ** (`./src/…`, `./levels/…`). Das Spiel läuft deshalb auch in einem Unterordner,
@@ -129,6 +146,12 @@ thema: wiese
 | `P` | Sprungpilz |
 | `C` | Checkpoint-Fähnchen (hier geht es nach dem Runterfallen weiter) |
 | `Z` | Ziel-Fahne |
+| `H` | Leiter – mit ▲/▼ klettern; auf der obersten Sprosse kann man stehen |
+| `~` | Wasser – schwimmen (jeder Sprung ist ein Schwimmzug). Unter dem Wasser braucht es Boden! |
+| `M` | fahrende Plattform ↔ (`MMM` = 3 Kacheln breit) – fährt bis zu Wand, Stopper `:` oder max. 8 Kacheln |
+| `V` | fahrende Plattform ↕ (Aufzug) – gleiche Regeln, senkrecht |
+| `:` | Stopper für fahrende Plattformen (unsichtbar) |
+| `+` | versteckter Stern – erst sichtbar, wenn Flinki nahe ist (verrät sich durch ein leises Glitzern) |
 | `?` | **Rätsel-Tor** – versperrt den Weg (die ganze Spalte darüber), öffnet sich mit der richtigen Antwort, +1 Stern |
 | `K` | **Rätsel-Kiste** – freiwillig, +1 Stern |
 
@@ -140,6 +163,8 @@ Regeln und Tipps:
 - Der **normale Boden** sind die unteren 2 Zeilen, Figuren kommen in die Zeile darüber.
   Eine Lücke im Boden ist ein Loch, bei dem man zum letzten Checkpoint zurückkommt.
 - Flinki springt normal etwa **4 Kacheln hoch** und rund **5 Lücken weit**, mit dem Pilz deutlich höher.
+- Sterne und `+` dürfen auch im Wasser liegen (die Zelle bleibt dann Wasser).
+- **Prüfen, ob ein Level schaffbar ist:** `python3 tools/check_levels.py` meldet unerreichbare Sterne, Kisten, Tore oder ein unerreichbares Ziel.
 - **Neues Level hinzufügen:** Datei `levels/meinlevel.txt` anlegen, in `levels/index.json` eintragen und
   (für den Offline-Modus) in `sw.js` bei `FILES` ergänzen und `VERSION` erhöhen.
 

@@ -24,8 +24,17 @@ function drawBG(d) {
   ctx.fillStyle = d.sun; ctx.globalAlpha = .35; el(d.sunX, d.sunY, d.sunR * 1.35, d.sunR * 1.35); ctx.globalAlpha = 1; el(d.sunX, d.sunY, d.sunR, d.sunR);
   if (d.night) { ctx.fillStyle = d.sky[0]; el(d.sunX + 18, d.sunY - 10, d.sunR * .85, d.sunR * .85); }
   for (let i = 0; i < 6; i++) { const span = W + 320; const x = (((i * 290 - G.cam * .15) % span) + span) % span - 160; cloud(x, 70 + (i * 53) % 130, .75 + (i % 3) * .22, d.cloud); }
+  if (d.rainbow) { // Regenbogen im Hintergrund
+    ['#ff5b5b', '#ffa94d', '#ffe066', '#69db7c', '#4dabf7', '#9775fa'].forEach((c, i) => { ctx.strokeStyle = c; ctx.globalAlpha = .55; ctx.lineWidth = 16; ctx.beginPath(); ctx.arc(640 - G.cam * .05, 620, 420 - i * 16, Math.PI, 0); ctx.stroke(); });
+    ctx.globalAlpha = 1;
+  }
   hills(.25, 470, 45, d.far, .0042);
   hills(.5, 560, 35, d.near, .0071);
+  if (d.trees) for (let i = 0; i < 9; i++) { // Tannen im Wald
+    const span = W + 200, x = (((i * 173 - G.cam * .5) % span) + span) % span - 100, h = 120 + (i * 37) % 60;
+    ctx.fillStyle = '#6b4a2b'; ctx.fillRect(x - 6, 560 - 20, 12, 40);
+    ctx.fillStyle = '#2f7d3f'; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(x, 540 - h + k * 30); ctx.lineTo(x - 40 + k * 4, 560 - h * .35 + k * 22); ctx.lineTo(x + 40 - k * 4, 560 - h * .35 + k * 22); ctx.fill(); }
+  }
 }
 function drawTiles(d) {
   const lvl = G.lvl;
@@ -35,7 +44,7 @@ function drawTiles(d) {
     if (c === '#') {
       ctx.fillStyle = d.dirt; ctx.fillRect(px, py, T + 1, T + 1);
       if ((x * 7 + y * 13) % 5 === 0) { ctx.fillStyle = d.dirt2; el(px + 16, py + 30, 5, 4); el(px + 34, py + 18, 3, 3); }
-      if (!solid(tile(x, y - 1))) {
+      if (!solid(tile(x, y - 1)) || tile(x, y - 1) === 'G') {
         ctx.fillStyle = d.grass; ctx.fillRect(px, py, T + 1, 13);
         for (let k = 0; k < 3; k++) el(px + 8 + k * 16, py + 13, 8, 6);
         ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(px, py, T + 1, 4);
@@ -43,6 +52,9 @@ function drawTiles(d) {
     } else if (c === 'B') {
       rrect(px + 2, py + 2, T - 4, T - 4, 9); ctx.fillStyle = '#ffc93c'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = '#d98a00'; ctx.stroke();
       ctx.fillStyle = '#e8a400'; el(px + 16, py + 18, 4, 4); el(px + 32, py + 30, 4, 4); el(px + 30, py + 14, 3, 3);
+    } else if (c === 'H') {
+      ctx.fillStyle = '#9a5f34'; ctx.fillRect(px + 8, py, 6, T + 1); ctx.fillRect(px + T - 14, py, 6, T + 1);
+      ctx.fillStyle = '#c98a4b'; for (const ry of [10, 34]) { rrect(px + 6, py + ry, T - 12, 6, 3); ctx.fill(); }
     } else if (c === '-') {
       rrect(px, py, T + 1, 17, 5); ctx.fillStyle = '#c98a4b'; ctx.fill();
       ctx.fillStyle = '#8a5a2b'; ctx.fillRect(px, py + 12, T + 1, 5);
@@ -68,6 +80,39 @@ function drawShroom(e) {
   ctx.fillStyle = '#ff4d4d'; ctx.beginPath(); ctx.ellipse(0, -18, 28, 20, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#fff'; el(-12, -26, 5, 4); el(6, -31, 6, 5); el(15, -22, 4, 3);
   ctx.restore();
+}
+function drawWater(d) {
+  const lvl = G.lvl, time = G.time;
+  const x0 = Math.max(0, Math.floor(G.cam / T)), x1 = Math.min(lvl.w - 1, x0 + Math.ceil(W / T) + 1);
+  ctx.fillStyle = d.water || 'rgba(60,150,255,.5)';
+  for (let y = 0; y < ROWS; y++) {
+    // zusammenhängende Wasserstücke einer Zeile in einem Zug zeichnen (keine Nähte)
+    for (let x = x0; x <= x1; x++) {
+      if (lvl.g[y][x] !== '~') continue;
+      const top = tile(x, y - 1) !== '~'; // Oberfläche (mit Wellen) oder tiefes Wasser
+      let e = x; while (e + 1 <= x1 && lvl.g[y][e + 1] === '~' && (tile(e + 1, y - 1) !== '~') === top) e++;
+      const px = x * T, pw = (e - x + 1) * T;
+      if (!top) ctx.fillRect(px, y * T, pw, T);
+      else {
+        ctx.beginPath(); ctx.moveTo(px, y * T + T);
+        for (let wx = px; wx <= px + pw; wx += 8) ctx.lineTo(wx, y * T + 8 + Math.sin(time * 3 + wx * .08) * 3);
+        ctx.lineTo(px + pw, y * T + T); ctx.closePath(); ctx.fill();
+        ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.55)';
+        for (let wx = px; wx < px + pw; wx += 8) ctx.fillRect(wx, y * T + 7 + Math.sin(time * 3 + wx * .08) * 3, 8, 3);
+        ctx.restore();
+      }
+      x = e;
+    }
+  }
+}
+function drawPlat(e) {
+  rrect(e.x, e.y, e.w, e.h + 2, 7); ctx.fillStyle = '#6fc3ff'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#2f7fc0'; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.fillRect(e.x + 6, e.y + 3, e.w - 12, 3);
+  // kleine Pfeile zeigen die Richtung
+  ctx.fillStyle = '#2f7fc0';
+  const cx = e.x + e.w / 2, cy = e.y + 11;
+  if (e.vx !== 0) { for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(cx + s * 22, cy); ctx.lineTo(cx + s * 12, cy - 5); ctx.lineTo(cx + s * 12, cy + 5); ctx.fill(); } }
+  else { ctx.beginPath(); ctx.moveTo(cx, cy - 7); ctx.lineTo(cx - 6, cy); ctx.lineTo(cx + 6, cy); ctx.fill(); ctx.beginPath(); ctx.moveTo(cx, cy + 8); ctx.lineTo(cx - 6, cy + 2); ctx.lineTo(cx + 6, cy + 2); ctx.fill(); }
 }
 function drawGate(e) {
   const a = e.open ? Math.max(0, 1 - e.openT * 1.5) : 1; if (a <= 0) return;
@@ -106,7 +151,12 @@ function drawEnts() {
   const time = G.time;
   for (const e of G.lvl.ents) {
     if (e.x < G.cam - 100 || e.x > G.cam + W + 100) continue;
-    if (e.t === 'star' && !e.got) starShape(e.x, e.y + Math.sin(time * 3 + e.ph) * 4, 17, Math.sin(time * 2 + e.ph) * .2);
+    if (e.t === 'star' && !e.got) {
+      if (e.hidden && !e.seen) { // nur ein leises Glitzern verrät den versteckten Stern
+        const g = Math.max(0, Math.sin(time * 2.2 + e.ph * 3)); if (g > .85) starShape(e.x, e.y, 6 * (g - .85) / .15 + 2, time * 3, 'rgba(255,255,255,.8)', 'rgba(255,255,255,0)');
+      } else starShape(e.x, e.y + Math.sin(time * 3 + e.ph) * 4, 17, Math.sin(time * 2 + e.ph) * .2, e.hidden ? '#fff27a' : undefined, e.hidden ? '#ff9f1a' : undefined);
+    }
+    else if (e.t === 'plat') drawPlat(e);
     else if (e.t === 'snail' && e.dead >= 0) drawSnail(e);
     else if (e.t === 'shroom') drawShroom(e);
     else if (e.t === 'gate') drawGate(e);
@@ -128,7 +178,7 @@ function drawEnts() {
 }
 function drawPlayer() {
   if (P.inv > 0 && Math.floor(P.inv * 12) % 2 === 0) return;
-  drawFox(P.x + P.w / 2, P.y + P.h, P.face, G.time, P.sq, P.onGround && Math.abs(P.vx) > 30);
+  drawFox(P.x + P.w / 2, P.y + P.h, P.face, G.time, P.sq, (P.onGround && Math.abs(P.vx) > 30) || P.swim || (P.climb && (Math.abs(P.vy) > 10 || Math.abs(P.vx) > 10)));
 }
 function drawFx() {
   for (const p of G.parts) { ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2)); ctx.fillStyle = p.col; el(p.x, p.y, p.r, p.r); } ctx.globalAlpha = 1;
@@ -277,7 +327,7 @@ export function draw() {
   const d = G.lvl.def;
   drawBG(d);
   ctx.save(); ctx.translate(-Math.round(G.cam), 0);
-  drawTiles(d); drawEnts(); drawPlayer(); drawFx();
+  drawTiles(d); drawEnts(); drawPlayer(); drawWater(d); drawFx();
   ctx.restore();
   drawHUD();
   if (G.state === 'pause') drawPause();
