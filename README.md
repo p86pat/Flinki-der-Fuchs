@@ -3,8 +3,8 @@
 Ein Jump-and-Run-Spiel für Kinder von 6 bis 8 Jahren, als reine Web-App (Vanilla JS, ES-Module, kein Build-Schritt).
 Gedacht für Safari auf dem iPad, gespiegelt per AirPlay auf den TV und gespielt mit einem Bluetooth-Controller.
 
-> **Stand:** Schritt 1: Der Prototyp (`flinki.html`) ist in Module aufgeteilt, das Verhalten ist unverändert.
-> PWA/Offline, Weltkarte, 8 Welten, Text-Maps, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
+> **Stand:** Schritt 2: Modulstruktur, installierbar als App (PWA) und offline spielbar.
+> Text-Maps, Weltkarte, 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
 
 ## Starten (lokal)
 
@@ -34,7 +34,9 @@ Dann `http://localhost:8000/` öffnen. Vom iPad aus im selben WLAN: `http://<IP-
 ## Projektstruktur
 
 ```
-index.html          Einstieg (lädt ./src/game.js als Modul)
+index.html          Einstieg (lädt ./src/game.js als Modul, registriert den Service Worker)
+manifest.webmanifest  App-Beschreibung für «Zum Home-Bildschirm»
+sw.js               Service Worker (Offline-Cache)
 flinki.html         Original-Prototyp (Referenz, wird später entfernt)
 src/
   config.js         Konstanten: 1280×720, Kachel 48 px, 15 Zeilen, Physik 120 Hz
@@ -48,7 +50,12 @@ src/
   levels.js         Level-Liste und Aufbau
 levels/
   welt1.js …        ein Level pro Datei
-assets/             (später: Icons für die PWA)
+assets/
+  fonts/            Schrift «Baloo 2» (SIL Open Font License, siehe OFL.txt)
+  icons/            App-Icons (selbst gezeichnet)
+tools/
+  icons.html        zeichnet die App-Icons (im Browser öffnen → «PNG speichern»)
+  make-icons.mjs    dasselbe automatisch: node tools/make-icons.mjs (braucht Playwright)
 ```
 
 Alle Pfade sind **relativ** (`./src/…`, `../levels/…`). Das Spiel läuft deshalb auch in einem Unterordner,
@@ -79,11 +86,51 @@ export default {
 
 In einem der nächsten Schritte wird daraus eine **Text-Map** (ein Zeichen pro Kachel) mit Level-Editor im Browser.
 
+## Als App installieren (iPad)
+
+1. Die Spiel-Adresse in **Safari** öffnen (nicht in Chrome, sonst gibt es kein «Zum Home-Bildschirm»).
+2. Teilen-Knopf ⎋ → **«Zum Home-Bildschirm»** → «Hinzufügen».
+3. Das Spiel über das Fuchs-Icon starten. Es läuft im Vollbild, ohne Adressleiste.
+4. Einmal online starten, danach geht es **auch ohne Internet**.
+5. Hochformat: Das Spiel zeigt ein Symbol «iPad drehen». Tipp: Die Ausrichtungssperre im Kontrollzentrum
+   auf Querformat stellen, dann kippt nichts beim Spielen.
+
+**Auf den TV:** Kontrollzentrum → Bildschirmsynchronisierung → Apple TV bzw. AirPlay-Gerät wählen.
+Das Bild ist 16:9, schwarze Ränder beim iPad-Format sind normal.
+
+**Updates:** Der Service Worker liefert zuerst die gespeicherte Version und lädt im Hintergrund nach.
+Neue Level oder Änderungen erscheinen deshalb beim **übernächsten** Start (App ganz schliessen und neu öffnen).
+Wer eine neue Datei hinzufügt, trägt sie in `sw.js` unter `FILES` ein und erhöht `VERSION`.
+
 ## Hosting
 
-Die ausführliche Anleitung (mit PWA/Offline) folgt im PWA-Schritt. Kurzfassung:
+Das Spiel besteht nur aus statischen Dateien. Alle Pfade sind relativ, es läuft deshalb in jedem Unterordner.
+Für den Service Worker (Offline) braucht es **HTTPS** oder `localhost`. Über reines `http://` im Heimnetz
+läuft das Spiel trotzdem, aber ohne Offline-Modus und ohne echte App-Installation.
 
-- **GitHub Pages:** Repository → Settings → Pages → «Deploy from a branch», Branch `main`, Ordner `/ (root)`.
-  Danach ist das Spiel unter `https://<user>.github.io/Flinki-der-Fuchs/` erreichbar.
-- **Home Assistant:** Alle Dateien nach `/config/www/flinki/` kopieren. Beim allerersten Anlegen von `www`
-  Home Assistant einmal neu starten. Aufruf: `http://<homeassistant>:8123/local/flinki/index.html`.
+### Variante A: GitHub Pages (empfohlen, HTTPS inklusive)
+
+1. Auf GitHub: Repository → **Settings → Pages**.
+2. Unter «Build and deployment»: Source **«Deploy from a branch»**, Branch **`main`**, Ordner **`/ (root)`** → Save.
+3. Nach 1–2 Minuten ist das Spiel erreichbar unter
+   `https://<github-user>.github.io/Flinki-der-Fuchs/`
+4. Diese Adresse auf dem iPad in Safari öffnen und wie oben zum Home-Bildschirm hinzufügen.
+
+Jeder Push auf `main` veröffentlicht automatisch die neue Version.
+
+### Variante B: Home Assistant im Heimnetz
+
+1. Im Ordner `/config/www/` einen Unterordner `flinki` anlegen, z. B. mit dem Add-on «File editor»,
+   «Samba share» oder «Studio Code Server».
+   Gibt es `www` noch nicht, lege ihn an und **starte Home Assistant einmal neu**.
+2. Alle Dateien des Projekts hineinkopieren (`index.html`, `manifest.webmanifest`, `sw.js`, `src/`, `levels/`, `assets/`).
+   `tools/`, `flinki.html` und `README.md` braucht es nicht.
+   Der Aufbau muss so aussehen: `/config/www/flinki/index.html`, `/config/www/flinki/src/game.js`, …
+3. Aufruf auf dem iPad:
+   - mit HTTPS (z. B. Nabu Casa oder ein eigenes Zertifikat): `https://<deine-ha-adresse>/local/flinki/index.html`
+     → offline-fähig und als App installierbar.
+   - nur `http://homeassistant.local:8123/local/flinki/index.html` → spielbar, aber ohne Offline-Modus.
+4. Hinweis: Dateien unter `/local/` sind **ohne Anmeldung** erreichbar. Für ein Kinderspiel ist das unproblematisch.
+   Leg dort aber keine privaten Daten ab.
+
+Ein Update geht so: Dateien ersetzen, dann auf dem iPad die App zweimal neu starten (siehe «Updates»).

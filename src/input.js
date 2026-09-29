@@ -45,7 +45,9 @@ export function updateTouchUI(playing) { touchUI.classList.toggle('hidden', !(is
 const fsBtn = document.getElementById('fs');
 const de = document.documentElement;
 const reqFS = de.requestFullscreen || de.webkitRequestFullscreen;
-if (!reqFS) fsBtn.classList.add('hidden');
+// Als installierte App (Home-Bildschirm) ist das Spiel schon im Vollbild.
+const installed = navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+if (!reqFS || installed) fsBtn.classList.add('hidden');
 fsBtn.addEventListener('click', () => {
   const inFS = document.fullscreenElement || document.webkitFullscreenElement;
   try { if (inFS) (document.exitFullscreen || document.webkitExitFullscreen).call(document); else reqFS.call(de); } catch (e) {}
