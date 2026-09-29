@@ -21,3 +21,12 @@ export const PAUSE_BTNS = [
 
 export const hit = (p, r) => p && p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
 export const hitCircle = (p, c, r) => p && (p.x - c.x) ** 2 + (p.y - c.y) ** 2 <= r * r;
+
+// Rätsel-Fenster
+export const QUIZ_PANEL = { x: 140, y: 40, w: 1000, h: 640 };
+export const QUIZ_SPEAK = { x: 170, y: 64, w: 84, h: 84 };   // 🔊 nochmal vorlesen
+export const QUIZ_CLOSE = { x: 1026, y: 64, w: 84, h: 84 };  // ✕ zurück
+export function quizButtons(n) {
+  const w = 220, h = 150, gap = 44, x0 = W / 2 - (n * w + (n - 1) * gap) / 2;
+  return Array.from({ length: n }, (_, i) => ({ x: x0 + i * (w + gap), y: 500, w, h }));
+}

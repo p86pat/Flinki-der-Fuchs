@@ -8,13 +8,15 @@
  * Kacheln:  .  leer      #  Erde/Boden     B  Block     -  Brett (von unten durchspringbar)
  * Objekte:  F  Flinki (Start)   *  Stern   S  Schnecke   P  Sprungpilz
  *           C  Checkpoint       Z  Ziel
+ *           ?  Rätsel-Tor (versperrt den Weg bis zur richtigen Antwort, gibt einen Bonus-Stern)
+ *           K  Rätsel-Kiste (freiwillig, gibt einen Bonus-Stern)
  * Objekte stehen auf dem Boden der Zelle, in der sie eingetragen sind (Stern: Zellmitte).
  */
 import { T, ROWS } from './config.js';
 import { THEMES } from './themes.js';
 
 export const TILES = { '.': 'leer', '#': 'Erde', 'B': 'Block', '-': 'Brett' };
-export const OBJECTS = { 'F': 'Start', '*': 'Stern', 'S': 'Schnecke', 'P': 'Sprungpilz', 'C': 'Checkpoint', 'Z': 'Ziel' };
+export const OBJECTS = { 'F': 'Start', '*': 'Stern', 'S': 'Schnecke', 'P': 'Sprungpilz', 'C': 'Checkpoint', 'Z': 'Ziel', '?': 'Rätsel-Tor', 'K': 'Rätsel-Kiste' };
 
 // Text → Level-Definition { name, thema, rows[] } (+ Farben des Themas)
 export function parseLevel(text, fallbackName = 'Level') {
@@ -54,11 +56,15 @@ export function buildLevel(def, idx) {
         case 'P': L.ents.push({ t: 'shroom', x: x * T, y: (y + 1) * T - 34, w: 48, h: 34, sq: 0 }); break;
         case 'C': L.ents.push({ t: 'check', x: x * T + T / 2, y: (y + 1) * T, on: false }); break;
         case 'Z': L.ents.push({ t: 'goal', x: x * T + T / 2, y: (y + 1) * T }); break;
+        case '?': L.ents.push({ t: 'gate', x: x * T, y: (y + 1) * T, cy: y, open: false, openT: 0 }); break;
+        case 'K': L.ents.push({ t: 'chest', x: x * T + 2, y: (y + 1) * T - 40, w: 44, h: 40, open: false, cool: false, openT: 0 }); break;
         case 'F': L.sx = x * T + 7; L.sy = (y + 1) * T - 42; break;
       }
     }
     L.g.push(row);
   }
-  L.total = L.ents.filter(e => e.t === 'star').length;
+  // Rätsel-Tore: ganze Spalte über dem Tor ist fest ('G'), bis das Rätsel gelöst ist
+  for (const e of L.ents) if (e.t === 'gate') for (let y = 0; y <= e.cy; y++) L.g[y][e.x / T] = 'G';
+  L.total = L.ents.filter(e => e.t === 'star' || e.t === 'gate' || e.t === 'chest').length;
   return L;
 }

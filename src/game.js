@@ -8,7 +8,9 @@ import { readInput, updateTouchUI } from './input.js';
 import { msg, burst, updateFx } from './fx.js';
 import { draw } from './render.js';
 import { isUnlocked, finishLevel, best } from './save.js';
-import { mapNodes, NODE_R, PAUSE_BTNS, hit, hitCircle } from './ui.js';
+import { mapNodes, NODE_R, PAUSE_BTNS, hit, hitCircle, quizButtons, QUIZ_SPEAK, QUIZ_CLOSE } from './ui.js';
+import { makeQuiz } from './quiz.js';
+import { say, hush } from './speech.js';
 
 function startLevel(i) {
   G.levelIdx = i; G.lvl = makeLevel(i);
@@ -65,6 +67,13 @@ function update(dt, inp) {
       if (overlap(P, e) && P.vy > 0 && P.y + P.h <= e.y + 20) { P.y = e.y - P.h; P.vy = -1400; P.bounced = true; e.sq = .25; sfx.boing(); burst(e.x + 24, e.y, '#ffffff', 8, 160); }
     } else if (e.t === 'check' && !e.on) {
       if (P.x + P.w / 2 > e.x) { e.on = true; P.rx = e.x - 17; P.ry = e.y - P.h; sfx.check(); msg('Gespeichert!', e.x, e.y - 110, '#b6ffcf'); burst(e.x, e.y - 80, '#3ddc84', 14, 220); }
+    } else if (e.t === 'gate') {
+      if (e.open) { e.openT += dt; continue; }
+      if (G.state === 'play' && P.x + P.w > e.x - 3 && P.x < e.x + T && P.y < e.y) openQuiz(e);
+    } else if (e.t === 'chest') {
+      if (e.open) { e.openT += dt; continue; }
+      const o = overlap(P, e);
+      if (o && !e.cool && G.state === 'play') openQuiz(e); else if (!o) e.cool = false;
     } else if (e.t === 'goal') {
       if (P.x + P.w > e.x - 4) {
         G.state = 'done'; G.doneT = 0; G.run[G.levelIdx] = { got: G.starsGot, total: lvl.total }; G.record = finishLevel(lvl.def, G.starsGot, lvl.total); sfx.win();
@@ -77,6 +86,58 @@ function update(dt, inp) {
   updateFx(dt);
   const target = Math.max(0, Math.min(lvl.w * T - W, P.x - W * .4));
   G.cam += (target - G.cam) * Math.min(1, dt * 7);
+}
+
+/* ---------- Lernrätsel ---------- */
+let lastQuizType = null;
+function openQuiz(src) {
+  const q = makeQuiz(G.levelIdx, lastQuizType); lastQuizType = q.type;
+  G.quiz = { q, src, sel: 0, wrong: [], solved: false, solvedAt: 0, t: 0, shake: 0, shakeI: -1 };
+  G.state = 'quiz'; P.vx = 0; sfx.select();
+  say(q.say);
+}
+
+function closeQuiz(solved) {
+  const Q = G.quiz, e = Q.src; hush();
+  G.state = 'play'; G.quiz = null;
+  if (solved) {
+    e.open = true; e.openT = 0; G.starsGot++; sfx.star();
+    const bx = e.t === 'gate' ? e.x + T / 2 : e.x + e.w / 2, by = e.t === 'gate' ? e.y - T : e.y;
+    burst(bx, by, '#ffd43b', 18, 300); msg('Super!', bx, by - 40, '#ffe066');
+    if (e.t === 'gate') for (let y = 0; y <= e.cy; y++) G.lvl.g[y][e.x / T] = '.';
+  } else if (e.t === 'gate') {
+    moveX(P, -40); P.vx = -120; // ein Stück zurück, damit das Rätsel nicht sofort wieder aufgeht
+  } else e.cool = true;       // Kiste: erst wieder, wenn man weggegangen ist
+}
+
+function chooseAnswer(i) {
+  const Q = G.quiz, q = Q.q;
+  if (Q.solved || Q.wrong.includes(i)) return;
+  if (i === q.correct) { Q.solved = true; Q.solvedAt = Q.t; sfx.check(); say('Super!'); }
+  else {
+    Q.wrong.push(i); Q.shake = .4; Q.shakeI = i; sfx.nope(); say('Probier nochmal!');
+    const free = q.options.map((_, k) => k).filter(k => !Q.wrong.includes(k));
+    if (!free.includes(Q.sel)) Q.sel = free[0];
+  }
+}
+
+function updateQuiz(d, inp) {
+  const Q = G.quiz; Q.t += d; Q.shake = Math.max(0, Q.shake - d);
+  if (Q.solved) { if (Q.t - Q.solvedAt > 1.3) closeQuiz(true); return; }
+  if (Q.t < .35) return; // kurz warten, damit ein gehaltener Sprung nicht gleich antwortet
+  const n = Q.q.options.length;
+  if (inp.tap) {
+    const i = quizButtons(n).findIndex(b => hit(inp.tap, b));
+    if (i >= 0) { Q.sel = i; chooseAnswer(i); }
+    else if (hit(inp.tap, QUIZ_SPEAK)) say(Q.q.say);
+    else if (hit(inp.tap, QUIZ_CLOSE)) closeQuiz(false);
+    return;
+  }
+  const step = dir => { let k = Q.sel; for (let j = 0; j < n; j++) { k = (k + dir + n) % n; if (!Q.wrong.includes(k)) { if (k !== Q.sel) sfx.select(); Q.sel = k; return; } } };
+  if (inp.startPressed) closeQuiz(false);
+  else if (inp.leftPressed) step(-1);
+  else if (inp.rightPressed) step(1);
+  else if (inp.confirmPressed) chooseAnswer(Q.sel);
 }
 
 /* ---------- Weltkarte ---------- */
@@ -139,6 +200,7 @@ function frame(now) {
     }
   }
   else if (G.state === 'pause') updatePause(d, inp);
+  else if (G.state === 'quiz') { G.time += d; updateQuiz(d, inp); }
   else if (G.state === 'done') {
     G.time += d; G.doneT += d; updateFx(d);
     if (G.doneT > .8 && inp.confirmPressed) {

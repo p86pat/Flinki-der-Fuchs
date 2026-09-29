@@ -3,8 +3,8 @@
 Ein Jump-and-Run-Spiel für Kinder von 6 bis 8 Jahren, als reine Web-App (Vanilla JS, ES-Module, kein Build-Schritt).
 Gedacht für Safari auf dem iPad, gespiegelt per AirPlay auf den TV und gespielt mit einem Bluetooth-Controller.
 
-> **Stand:** Schritt 4: Modulstruktur, PWA/offline, Level als Text-Maps, Weltkarte mit Speicherstand.
-> Lernrätsel, 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
+> **Stand:** Schritt 5: Modulstruktur, PWA/offline, Level als Text-Maps, Weltkarte mit Speicherstand, Lernrätsel.
+> 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
 
 ## Starten (lokal)
 
@@ -32,6 +32,23 @@ Dann `http://localhost:8000/` öffnen. Vom iPad aus im selben WLAN: `http://<IP-
 - Die Touch-Knöpfe erscheinen nur auf Touch-Geräten, und nur solange kein Controller aktiv ist.
 - Längeres Drücken der Sprungtaste lässt Flinki höher springen. Coyote Time (0,1 s) und
   Jump Buffer (0,14 s) machen das Springen nachsichtig.
+
+## Lernrätsel
+
+In den Welten stehen **Rätsel-Tore** `?` auf dem Weg und **Rätsel-Kisten** `K` daneben.
+Läuft Flinki hinein, öffnet sich ein grosses Rätsel-Fenster:
+
+- **Arten:** Zählen (Äpfel, Sterne, Fische, Bälle in Fünferreihen), Plus- und Minusaufgaben mit Äpfeln als Hilfe,
+  Muster fortsetzen (Formen und Farben), Anlaute (Bild → Anfangsbuchstabe).
+- **Schwierigkeit steigt mit den Welten:** Welt 1 zählen bis 5, Muster AB und 2 Buchstaben zur Auswahl.
+  Ab Welt 2 kommt Plus dazu, ab Welt 3 Minus, später geht es bis 20 und die Muster werden länger (ABC, AABB).
+- **Vorlesen:** Die Frage wird vorgelesen, der 🔊-Knopf wiederholt sie. So geht es auch ohne Lesen.
+  Auf dem iPad eine schöne deutsche Stimme laden: Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Deutsch.
+- **Falsch ist nicht schlimm:** Die falsche Antwort wird grau, «Probier nochmal!», man versucht einfach weiter.
+  Die richtige Antwort bringt einen Bonus-Stern, und das Tor geht auf.
+- **Steuerung:** ◀ ▶ auswählen, A antworten. Start bzw. ✕ schliesst das Fenster (beim Tor geht Flinki einen Schritt zurück).
+  Auf dem Touchscreen einfach die Antwort antippen.
+- Die Aufgaben sind jedes Mal neu gewürfelt.
 
 ## Ablauf & Spielstand
 
@@ -65,7 +82,12 @@ src/
   levelformat.js    Text-Map lesen/schreiben, Level aufbauen
   themes.js         Farbthemen (wiese, abend, nacht)
   save.js           Spielstand (localStorage)
-  ui.js             Layout von Karte und Pause-Menü (fürs Zeichnen und Antippen)
+  ui.js             Layout von Karte, Pause-Menü und Rätsel-Fenster (fürs Zeichnen und Antippen)
+  gfx.js            Canvas, Zeichen-Grundfunktionen, Flinki-Figur
+  quiz.js           Lernrätsel erzeugen (Arten, Schwierigkeit je Welt)
+  quizdraw.js       Rätsel-Fenster zeichnen
+  pics.js           selbst gezeichnete Bilder (Apfel, Fisch, Haus, …) und Formen
+  speech.js         Vorlesen (Web Speech API, auf dem iPad offline)
 levels/
   index.json        Reihenfolge der Welten
   welt1.txt …       ein Level pro Datei (Text-Map)
@@ -107,6 +129,8 @@ thema: wiese
 | `P` | Sprungpilz |
 | `C` | Checkpoint-Fähnchen (hier geht es nach dem Runterfallen weiter) |
 | `Z` | Ziel-Fahne |
+| `?` | **Rätsel-Tor** – versperrt den Weg (die ganze Spalte darüber), öffnet sich mit der richtigen Antwort, +1 Stern |
+| `K` | **Rätsel-Kiste** – freiwillig, +1 Stern |
 
 Regeln und Tipps:
 - **Kopf:** `name:` (wird am Levelanfang angezeigt) und `thema:` (`wiese`, `abend` oder `nacht`), danach eine Zeile `---`.

@@ -7,33 +7,11 @@ import { padActive, isTouch } from './input.js';
 import { THEMES } from './themes.js';
 import { best, isUnlocked } from './save.js';
 import { mapNodes, NODE_R, PAUSE_BTNS } from './ui.js';
-
-const cv = document.getElementById('c'), ctx = cv.getContext('2d');
-let scale = 1;
-
-// Canvas an Fenster und devicePixelRatio anpassen (Letterboxing bei anderem Seitenverhältnis).
-function fit() {
-  const vw = document.body.clientWidth || innerWidth, vh = document.body.clientHeight || innerHeight;
-  const s = Math.min(vw / W, vh / H), dpr = Math.min(2, window.devicePixelRatio || 1);
-  cv.style.width = Math.round(W * s) + 'px'; cv.style.height = Math.round(H * s) + 'px';
-  cv.width = Math.round(W * s * dpr); cv.height = Math.round(H * s * dpr); scale = s * dpr;
-}
-addEventListener('resize', fit); addEventListener('orientationchange', () => setTimeout(fit, 200)); fit();
+import { drawQuiz } from './quizdraw.js';
+import { ctx, scale, el, rrect, txt, starShape, cloud, drawFox } from './gfx.js';
 
 const SKYSTARS = []; for (let i = 0; i < 70; i++) SKYSTARS.push([Math.random() * W, Math.random() * 360, Math.random() * 6]);
 
-function el(x, y, rx, ry) { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); }
-function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
-function txt(s, x, y, size, col, align) {
-  ctx.font = `800 ${size}px ${FONT}`; ctx.textAlign = align || 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-  ctx.lineWidth = size * .18; ctx.strokeStyle = 'rgba(35,20,60,.9)'; ctx.strokeText(s, x, y); ctx.fillStyle = col || '#fff'; ctx.fillText(s, x, y);
-}
-function starShape(x, y, r, rot, fill, stroke) {
-  ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); ctx.beginPath();
-  for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2, rr = i % 2 ? r * .5 : r; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
-  ctx.closePath(); ctx.fillStyle = fill || '#ffd43b'; ctx.fill(); ctx.lineWidth = r * .16; ctx.strokeStyle = stroke || '#e89b00'; ctx.lineJoin = 'round'; ctx.stroke(); ctx.restore();
-}
-function cloud(x, y, s, col) { ctx.fillStyle = col; el(x, y, 50 * s, 28 * s); el(x + 40 * s, y + 6 * s, 40 * s, 24 * s); el(x - 40 * s, y + 8 * s, 36 * s, 20 * s); el(x + 8 * s, y - 18 * s, 34 * s, 24 * s); }
 function hills(f, base, amp, col, freq) {
   ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, H);
   for (let x = 0; x <= W + 16; x += 16) { const wx = x + G.cam * f; ctx.lineTo(x, base - Math.sin(wx * freq) * amp - Math.sin(wx * freq * 2.3 + 1) * amp * .45); }
@@ -72,29 +50,6 @@ function drawTiles(d) {
     }
   }
 }
-function drawFox(x, y, face, t, sq, walking) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(face * (1 + sq), 1 - sq);
-  const wag = Math.sin(t * 7) * .3;
-  ctx.save(); ctx.translate(-14, -16); ctx.rotate(-.5 + wag);
-  ctx.fillStyle = '#ff8a2a'; el(-13, 0, 17, 9); ctx.fillStyle = '#fff'; el(-26, 0, 7, 6); ctx.restore();
-  const st = walking ? Math.sin(t * 18) * 6 : 0;
-  ctx.fillStyle = '#5a2d0c'; el(-7 + st, -3, 8, 4.5); el(8 - st, -3, 8, 4.5);
-  ctx.fillStyle = '#ff8a2a';
-  ctx.beginPath(); ctx.moveTo(-14, -34); ctx.lineTo(-10, -56); ctx.lineTo(-1, -38); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(2, -38); ctx.lineTo(10, -57); ctx.lineTo(15, -33); ctx.fill();
-  ctx.fillStyle = '#5a2d0c';
-  ctx.beginPath(); ctx.moveTo(-10, -38); ctx.lineTo(-9, -50); ctx.lineTo(-4, -39); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(5, -39); ctx.lineTo(10, -51); ctx.lineTo(12, -37); ctx.fill();
-  ctx.fillStyle = '#ff8a2a'; el(0, -22, 19, 21);
-  ctx.fillStyle = '#fff3e6'; el(5, -14, 11, 10); el(12, -24, 9, 7);
-  ctx.fillStyle = '#fff'; el(4, -29, 5, 6); el(13, -29, 4.5, 6);
-  ctx.fillStyle = '#2a1a10'; el(5.5, -28, 2.8, 3.8); el(14, -28, 2.6, 3.8);
-  ctx.fillStyle = '#fff'; el(6.5, -30, 1.1, 1.3); el(15, -30, 1, 1.3);
-  ctx.fillStyle = '#2a1a10'; el(20, -23, 3, 2.4);
-  ctx.fillStyle = 'rgba(255,110,140,.55)'; el(-2, -21, 4, 2.5);
-  ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(14, -20, 3, .2, Math.PI - .4); ctx.stroke();
-  ctx.restore();
-}
 function drawSnail(e) {
   const dir = e.vx < 0 ? -1 : 1;
   ctx.save(); ctx.translate(e.x + e.w / 2, e.y + e.h); ctx.scale(dir, e.dead > 0 ? .35 : 1);
@@ -114,6 +69,39 @@ function drawShroom(e) {
   ctx.fillStyle = '#fff'; el(-12, -26, 5, 4); el(6, -31, 6, 5); el(15, -22, 4, 3);
   ctx.restore();
 }
+function drawGate(e) {
+  const a = e.open ? Math.max(0, 1 - e.openT * 1.5) : 1; if (a <= 0) return;
+  const x = e.x, bot = e.y, sink = e.open ? e.openT * 160 : 0, time = G.time;
+  ctx.globalAlpha = a;
+  // Zaubervorhang über dem Tor
+  for (let y = 0; y < bot - 2 * T; y += 12) {
+    ctx.fillStyle = `hsla(${(y * 1.5 + time * 140) % 360},90%,72%,.42)`; ctx.fillRect(x + 10, y, T - 20, 12);
+  }
+  for (let k = 0; k < 3; k++) starShape(x + T / 2 + Math.sin(time * 2 + k * 2) * 10, ((time * 60 + k * 170) % (bot - 2 * T)), 6, time * 2, '#fff', '#ffe066');
+  // Holztor mit Fragezeichen
+  ctx.save(); ctx.beginPath(); ctx.rect(x - 10, 0, T + 20, bot); ctx.clip();
+  const y0 = bot - 2 * T + sink;
+  rrect(x + 1, y0, T - 2, 2 * T, 10); ctx.fillStyle = '#c98a4b'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = '#7a4a22'; ctx.stroke();
+  ctx.fillStyle = '#b0743b'; ctx.fillRect(x + 15, y0 + 4, 3, 2 * T - 8); ctx.fillRect(x + 30, y0 + 4, 3, 2 * T - 8);
+  ctx.fillStyle = '#ffe066'; el(x + T / 2, y0 + 34, 19, 19);
+  txt('?', x + T / 2, y0 + 37, 34, '#ff4d8d');
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+function drawChest(e) {
+  const cx = e.x + e.w / 2, by = e.y + e.h, time = G.time;
+  const bob = e.open ? 0 : Math.abs(Math.sin(time * 3)) * -3;
+  ctx.fillStyle = 'rgba(40,25,20,.25)'; el(cx, by - 1, 24, 4);
+  rrect(cx - 24, by - 28, 48, 28, 6); ctx.fillStyle = '#c98a4b'; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#7a4a22'; ctx.stroke();
+  ctx.fillStyle = '#8a5a2b'; ctx.fillRect(cx - 24, by - 16, 48, 4);
+  if (!e.open) {
+    rrect(cx - 26, by - 44 + bob, 52, 18, 8); ctx.fillStyle = '#d99a55'; ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffe066'; el(cx, by - 26 + bob, 9, 9); txt('?', cx, by - 25 + bob, 16, '#ff4d8d');
+  } else {
+    ctx.save(); ctx.translate(cx - 24, by - 28); ctx.rotate(-1.9); rrect(0, -2, 52, 16, 8); ctx.fillStyle = '#d99a55'; ctx.fill(); ctx.stroke(); ctx.restore();
+    if (e.openT < 2) for (let k = 0; k < 3; k++) starShape(cx - 14 + k * 14, by - 36 - ((e.openT * 40 + k * 9) % 30), 5, e.openT * 4, '#fff', '#ffe066');
+  }
+}
 function drawEnts() {
   const time = G.time;
   for (const e of G.lvl.ents) {
@@ -121,6 +109,8 @@ function drawEnts() {
     if (e.t === 'star' && !e.got) starShape(e.x, e.y + Math.sin(time * 3 + e.ph) * 4, 17, Math.sin(time * 2 + e.ph) * .2);
     else if (e.t === 'snail' && e.dead >= 0) drawSnail(e);
     else if (e.t === 'shroom') drawShroom(e);
+    else if (e.t === 'gate') drawGate(e);
+    else if (e.t === 'chest') drawChest(e);
     else if (e.t === 'check') {
       ctx.fillStyle = '#6b6b7a'; ctx.fillRect(e.x - 3, e.y - 100, 6, 100); el(e.x, e.y - 100, 6, 6);
       ctx.fillStyle = e.on ? '#3ddc84' : '#d7d7e0'; ctx.beginPath(); ctx.moveTo(e.x + 3, e.y - 96); ctx.lineTo(e.x + 46, e.y - 82 + Math.sin(time * 4) * 3); ctx.lineTo(e.x + 3, e.y - 66); ctx.fill();
@@ -291,5 +281,6 @@ export function draw() {
   ctx.restore();
   drawHUD();
   if (G.state === 'pause') drawPause();
+  if (G.state === 'quiz') drawQuiz(G.quiz, padActive);
   if (G.state === 'done') drawDone();
 }
