@@ -1,17 +1,23 @@
 /* ---------- Eingabe: Tastatur, Touch, Gamepad ---------- */
 import { audio } from './audio.js';
+import { W, H } from './config.js';
 
-const keys = {};
-addEventListener('keydown', e => { keys[e.code] = true; audio(); if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault(); });
+const keys = {}, hitKeys = {}; // hitKeys: seit der letzten Abfrage gedrückt (auch ganz kurze Tipper)
+addEventListener('keydown', e => { keys[e.code] = true; if (!e.repeat) hitKeys[e.code] = true; audio(); if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault(); });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
-const touch = { l: false, r: false, j: false };
-let tapped = false, prev = { jump: false, start: false, confirm: false };
+const touch = { l: false, r: false, j: false, p: false };
+let tapped = false, tapPos = null, prev = { jump: false, start: false, confirm: false, left: false, right: false };
 export let padActive = false;
 export const isTouch = ('ontouchstart' in window) || matchMedia('(pointer:coarse)').matches;
 
-document.getElementById('c').addEventListener('pointerdown', () => { tapped = true; audio(); });
-[['bl', 'l'], ['br', 'r'], ['bj', 'j']].forEach(([id, k]) => {
+// Tippen auf das Bild: Position in Spielkoordinaten (1280×720) merken
+const cv = document.getElementById('c');
+cv.addEventListener('pointerdown', e => {
+  const r = cv.getBoundingClientRect();
+  tapped = true; tapPos = { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; audio();
+});
+[['bl', 'l'], ['br', 'r'], ['bj', 'j'], ['bp', 'p']].forEach(([id, k]) => {
   const el = document.getElementById(id);
   const on = e => { e.preventDefault(); touch[k] = true; audio(); if (k === 'j') tapped = true; el.style.background = 'rgba(255,255,255,.5)'; };
   const off = e => { e.preventDefault(); touch[k] = false; el.style.background = ''; };
@@ -19,11 +25,18 @@ document.getElementById('c').addEventListener('pointerdown', () => { tapped = tr
 });
 document.addEventListener('gesturestart', e => e.preventDefault());
 
+const KEYMAP = {
+  left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'],
+  jump: ['Space', 'ArrowUp', 'KeyW'], start: ['Escape', 'KeyP'], enter: ['Enter']
+};
+const held = n => KEYMAP[n].some(c => keys[c]);
+const hitNow = n => KEYMAP[n].some(c => hitKeys[c]);
+
 // Einmal pro Frame aufrufen. Liefert gehaltene Tasten und Flanken (…Pressed).
 export function readInput() {
-  let left = !!(keys.ArrowLeft || keys.KeyA) || touch.l, right = !!(keys.ArrowRight || keys.KeyD) || touch.r;
-  let jump = !!(keys.Space || keys.ArrowUp || keys.KeyW) || touch.j;
-  let start = !!(keys.Escape || keys.KeyP), confirm = !!keys.Enter;
+  let left = held('left') || touch.l, right = held('right') || touch.r;
+  let jump = held('jump') || touch.j;
+  let start = held('start') || touch.p, confirm = held('enter');
   let pa = false;
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
   for (const p of pads) { if (!p) continue; pa = true;
@@ -33,9 +46,20 @@ export function readInput() {
     if (bt(9) || bt(8)) start = true;
   }
   padActive = pa; confirm = confirm || jump;
-  const out = { left, right, jump, jumpPressed: jump && !prev.jump, startPressed: start && !prev.start, confirmPressed: (confirm && !prev.confirm) || tapped };
+  // Flanke: jetzt gedrückt und vorher nicht – oder ein kurzer Tipper zwischen zwei Frames
+  const edge = (now, was, n) => (now && !was) || hitNow(n);
+  const jumpPressed = edge(jump, prev.jump, 'jump');
+  const out = {
+    left: left || hitNow('left'), right: right || hitNow('right'), jump: jump || hitNow('jump'),
+    jumpPressed, startPressed: edge(start, prev.start, 'start'),
+    confirmPressed: (confirm && !prev.confirm) || hitNow('enter') || jumpPressed || tapped,
+    leftPressed: edge(left, prev.left, 'left'), rightPressed: edge(right, prev.right, 'right'),
+    tap: tapPos // null oder {x,y} – nur im Frame des Antippens
+  };
   if (out.confirmPressed || out.jumpPressed) audio();
-  prev = { jump, start, confirm }; tapped = false; return out;
+  prev = { jump, start, confirm, left, right };
+  for (const c in hitKeys) delete hitKeys[c];
+  tapped = false; tapPos = null; return out;
 }
 
 const touchUI = document.getElementById('touch');

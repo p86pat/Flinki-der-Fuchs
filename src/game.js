@@ -7,6 +7,8 @@ import { tile, solid, moveX, moveY, overlap } from './physics.js';
 import { readInput, updateTouchUI } from './input.js';
 import { msg, burst, updateFx } from './fx.js';
 import { draw } from './render.js';
+import { isUnlocked, finishLevel, best } from './save.js';
+import { mapNodes, NODE_R, PAUSE_BTNS, hit, hitCircle } from './ui.js';
 
 function startLevel(i) {
   G.levelIdx = i; G.lvl = makeLevel(i);
@@ -65,7 +67,7 @@ function update(dt, inp) {
       if (P.x + P.w / 2 > e.x) { e.on = true; P.rx = e.x - 17; P.ry = e.y - P.h; sfx.check(); msg('Gespeichert!', e.x, e.y - 110, '#b6ffcf'); burst(e.x, e.y - 80, '#3ddc84', 14, 220); }
     } else if (e.t === 'goal') {
       if (P.x + P.w > e.x - 4) {
-        G.state = 'done'; G.doneT = 0; G.run[G.levelIdx] = { got: G.starsGot, total: lvl.total }; sfx.win();
+        G.state = 'done'; G.doneT = 0; G.run[G.levelIdx] = { got: G.starsGot, total: lvl.total }; G.record = finishLevel(lvl.def, G.starsGot, lvl.total); sfx.win();
         for (let k = 0; k < 5; k++) burst(e.x, e.y - 180 - k * 10, ['#ff4d8d', '#ffd43b', '#4dc3ff', '#3ddc84', '#b18cff'][k], 14, 380);
       }
     }
@@ -77,32 +79,80 @@ function update(dt, inp) {
   G.cam += (target - G.cam) * Math.min(1, dt * 7);
 }
 
+/* ---------- Weltkarte ---------- */
+function openMap(sel, from = sel) { G.state = 'map'; G.mapSel = sel; G.mapFrom = from; G.mapT = from === sel ? 1 : 0; G.parts = []; G.msgs = []; }
+
+function mapMove(to) {
+  if (to < 0 || to >= LEVELS.length || to === G.mapSel) return;
+  if (!isUnlocked(LEVELS, to)) { sfx.nope(); return; }
+  G.mapFrom = G.mapSel; G.mapSel = to; G.mapT = 0; sfx.select();
+}
+
+function updateMap(d, inp) {
+  G.time += d; G.mapT = Math.min(1, G.mapT + d * 3.5);
+  if (inp.tap) {
+    const nodes = mapNodes(LEVELS.length);
+    const i = nodes.findIndex(n => hitCircle(inp.tap, n, NODE_R + 14));
+    if (i < 0) return;
+    if (i === G.mapSel) startLevel(i); else mapMove(i);
+    return;
+  }
+  if (inp.startPressed) { G.state = 'title'; return; }
+  if (inp.leftPressed) mapMove(G.mapSel - 1);
+  else if (inp.rightPressed) mapMove(G.mapSel + 1);
+  else if (inp.confirmPressed && G.mapT >= 1) startLevel(G.mapSel);
+}
+
+/* ---------- Pause-Menü: [weiter] [Karte] ---------- */
+function updatePause(d, inp) {
+  G.time += d;
+  if (inp.tap) {
+    const i = PAUSE_BTNS.findIndex(b => hit(inp.tap, b));
+    if (i === 0) G.state = 'play'; else if (i === 1) openMap(G.levelIdx);
+    return;
+  }
+  if (inp.leftPressed && G.pauseSel !== 0) { G.pauseSel = 0; sfx.select(); }
+  if (inp.rightPressed && G.pauseSel !== 1) { G.pauseSel = 1; sfx.select(); }
+  if (inp.startPressed) G.state = 'play';
+  else if (inp.confirmPressed) { if (G.pauseSel === 0) G.state = 'play'; else openMap(G.levelIdx); }
+}
+
 /* ---------- Loop (feste Physik-Schrittweite) ---------- */
 let last = performance.now(), accT = 0;
 function frame(now) {
   const d = Math.min(.05, (now - last) / 1000); last = now;
   const inp = readInput();
-  if (G.state === 'title') { G.time += d; if (inp.confirmPressed) { G.run = []; startLevel(0); } }
+  if (G.state === 'title') {
+    G.time += d;
+    if (inp.confirmPressed) {
+      // Auf der Karte bei der ersten noch nicht geschafften Welt beginnen
+      let i = LEVELS.findIndex(l => !best(l)); if (i < 0) i = LEVELS.length - 1;
+      openMap(i);
+    }
+  }
+  else if (G.state === 'map') updateMap(d, inp);
   else if (G.state === 'play') {
-    if (inp.startPressed) { G.state = 'pause'; }
+    if (inp.startPressed) { G.state = 'pause'; G.pauseSel = 0; }
     else {
       if (inp.jumpPressed) P.buffer = .14;
       accT += d; while (accT >= STEP) { update(STEP, inp); accT -= STEP; if (G.state !== 'play') break; }
     }
   }
-  else if (G.state === 'pause') { G.time += d; if (inp.startPressed || inp.confirmPressed) G.state = 'play'; }
+  else if (G.state === 'pause') updatePause(d, inp);
   else if (G.state === 'done') {
     G.time += d; G.doneT += d; updateFx(d);
     if (G.doneT > .8 && inp.confirmPressed) {
-      if (G.levelIdx < LEVELS.length - 1) startLevel(G.levelIdx + 1);
-      else { G.state = 'win'; G.parts = []; sfx.win(); }
+      const last = G.levelIdx === LEVELS.length - 1;
+      if (last && LEVELS.every(l => best(l))) { G.state = 'win'; G.parts = []; sfx.win(); }
+      else openMap(last ? G.levelIdx : G.levelIdx + 1, G.levelIdx); // Flinki hüpft zur nächsten Welt
     }
   }
   else if (G.state === 'win') {
     G.time += d; updateFx(d);
     if (Math.random() < d * 3) burst(Math.random() * W, Math.random() * 300, ['#ff4d8d', '#ffd43b', '#4dc3ff', '#3ddc84'][Math.floor(Math.random() * 4)], 12, 300);
-    if (inp.confirmPressed) { G.state = 'title'; }
+    if (inp.confirmPressed) openMap(G.levelIdx);
   }
+  if (G.state !== 'play') accT = 0;
   updateTouchUI(G.state === 'play');
   draw();
   requestAnimationFrame(frame);

@@ -3,8 +3,8 @@
 Ein Jump-and-Run-Spiel für Kinder von 6 bis 8 Jahren, als reine Web-App (Vanilla JS, ES-Module, kein Build-Schritt).
 Gedacht für Safari auf dem iPad, gespiegelt per AirPlay auf den TV und gespielt mit einem Bluetooth-Controller.
 
-> **Stand:** Schritt 3: Modulstruktur, PWA/offline, Level als Text-Maps.
-> Weltkarte, 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
+> **Stand:** Schritt 4: Modulstruktur, PWA/offline, Level als Text-Maps, Weltkarte mit Speicherstand.
+> Lernrätsel, 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
 
 ## Starten (lokal)
 
@@ -23,13 +23,27 @@ Dann `http://localhost:8000/` öffnen. Vom iPad aus im selben WLAN: `http://<IP-
 | Laufen            | Linker Stick / Steuerkreuz ◀ ▶    | ← → oder A / D        | ◀ ▶ Knöpfe       |
 | Springen          | A / B / X / Y (jede Taste) oder ▲ | Leertaste, ↑ oder W   | «Hopp»           |
 | Bestätigen        | wie Springen                      | Enter / Leertaste     | Bildschirm tippen|
-| Pause             | Start / Options / + (auch Select) | Esc oder P            | –                |
+| Pause             | Start / Options / + (auch Select) | Esc oder P            | ❚❚ oben in der Mitte |
+| Karte: Welt wählen | ◀ ▶                              | ← →                   | Welt antippen (nochmal tippen = los) |
+| Pause-Menü        | ◀ ▶ wählen, A: ▶ weiter / 🗺 Karte | ← → und Leertaste     | Knopf antippen   |
 
 - **Safari meldet einen Controller erst nach dem ersten Tastendruck.** Auf dem Titelbild steht deshalb
   «Controller? Einmal eine Taste drücken».
 - Die Touch-Knöpfe erscheinen nur auf Touch-Geräten, und nur solange kein Controller aktiv ist.
 - Längeres Drücken der Sprungtaste lässt Flinki höher springen. Coyote Time (0,1 s) und
   Jump Buffer (0,14 s) machen das Springen nachsichtig.
+
+## Ablauf & Spielstand
+
+Titelbild → **Weltkarte** → Welt spielen → Ziel → zurück zur Karte, wo Flinki zur nächsten Welt hüpft.
+Eine Welt wird frei, sobald die vorherige geschafft ist. Unter jeder geschafften Welt steht die beste Sternzahl
+(gelb, wenn alle Sterne gesammelt sind). Nach der letzten Welt kommt der Jubel-Bildschirm.
+
+Der Spielstand liegt im Browser (localStorage, Schlüssel `flinki-spielstand-v1`), pro Gerät und pro Adresse.
+Die App auf dem Home-Bildschirm und Safari haben **getrennte** Spielstände.
+- **Alle Welten zum Testen freischalten:** `?alle` an die Adresse hängen, z. B. `…/Flinki-der-Fuchs/?alle`
+  (wird nicht gespeichert).
+- Wird ein Level geändert (andere Sternzahl), zählt sein Rekord neu.
 
 ## Projektstruktur
 
@@ -50,6 +64,8 @@ src/
   levels.js         lädt die Level-Dateien (levels/index.json)
   levelformat.js    Text-Map lesen/schreiben, Level aufbauen
   themes.js         Farbthemen (wiese, abend, nacht)
+  save.js           Spielstand (localStorage)
+  ui.js             Layout von Karte und Pause-Menü (fürs Zeichnen und Antippen)
 levels/
   index.json        Reihenfolge der Welten
   welt1.txt …       ein Level pro Datei (Text-Map)

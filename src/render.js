@@ -4,6 +4,9 @@ import { G, P } from './state.js';
 import { LEVELS } from './levels.js';
 import { tile, solid } from './physics.js';
 import { padActive, isTouch } from './input.js';
+import { THEMES } from './themes.js';
+import { best, isUnlocked } from './save.js';
+import { mapNodes, NODE_R, PAUSE_BTNS } from './ui.js';
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 let scale = 1;
@@ -157,8 +160,9 @@ function hint() {
 }
 function drawTitle() {
   const time = G.time;
-  G.cam = time * 60; drawBG(LEVELS[0]);
-  ctx.fillStyle = LEVELS[0].grass; ctx.fillRect(0, H - 96, W, 96); ctx.fillStyle = LEVELS[0].dirt; ctx.fillRect(0, H - 83, W, 83);
+  const th = THEMES.wiese;
+  G.cam = time * 60; drawBG(th);
+  ctx.fillStyle = th.grass; ctx.fillRect(0, H - 96, W, 96); ctx.fillStyle = th.dirt; ctx.fillRect(0, H - 83, W, 83);
   const by = H - 96 - Math.abs(Math.sin(time * 3)) * 70;
   drawFox(W / 2, by, 1, time, 0, false);
   for (let i = 0; i < 5; i++) starShape(W / 2 - 240 + i * 120, 200 + Math.sin(time * 3 + i) * 10, 22, Math.sin(time + i) * .3);
@@ -169,36 +173,123 @@ function drawTitle() {
 }
 function drawDone() {
   panel(330);
-  const r = G.run[G.levelIdx], last = G.levelIdx === LEVELS.length - 1;
-  txt(last ? 'Geschafft!' : 'Super gemacht!', W / 2, H / 2 - 100, 76, '#ffe066');
+  const r = G.run[G.levelIdx];
+  txt('Super gemacht!', W / 2, H / 2 - 100, 76, '#ffe066');
   starShape(W / 2 - 90, H / 2 + 5, 34, 0);
   ctx.font = `800 56px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
   ctx.fillText(`${r.got} / ${r.total}`, W / 2 - 40, H / 2 + 8);
-  if (G.doneT > .8 && Math.sin(G.time * 5) > -.3) txt(hint() + (!last ? ' für die nächste Welt' : ''), W / 2, H / 2 + 110, 36, '#b6ffcf');
+  if (G.record && r.got > 0) txt('Rekord!', W / 2 + 250, H / 2 - 40, 34, '#b6ffcf');
+  if (G.doneT > .8 && Math.sin(G.time * 5) > -.3) txt(hint() + ' zum Weitermachen', W / 2, H / 2 + 110, 36, '#b6ffcf');
 }
 function drawWin() {
   const time = G.time;
-  drawBG(LEVELS[2]);
-  let g = 0, t = 0; G.run.forEach(r => { if (r) { g += r.got; t += r.total; } });
+  drawBG(THEMES.nacht);
+  let g = 0, t = 0; LEVELS.forEach(l => { const b = best(l); if (b) { g += b.got; t += b.total; } });
   panel(420);
   txt('Du bist ein Hüpf-Profi!', W / 2, H / 2 - 130, 70, '#ffe066');
   drawFox(W / 2, H / 2 + 30 - Math.abs(Math.sin(time * 4)) * 30, 1, time, 0, false);
   starShape(W / 2 - 90, H / 2 + 90, 30, 0);
   ctx.font = `800 50px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff'; ctx.fillText(`${g} / ${t} Sterne`, W / 2 - 50, H / 2 + 93);
-  if (Math.sin(time * 5) > -.3) txt(hint() + ' zum Nochmal-Spielen', W / 2, H / 2 + 170, 34, '#b6ffcf');
+  if (Math.sin(time * 5) > -.3) txt(hint() + ' zur Karte', W / 2, H / 2 + 170, 34, '#b6ffcf');
   drawFx();
+}
+
+/* ---------- Weltkarte ---------- */
+function lockShape(x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, -8, 12, Math.PI, 0); ctx.stroke();
+  rrect(-18, -8, 36, 28, 6); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.fillStyle = '#6b6b7a'; el(0, 3, 4, 4); ctx.fillRect(-2, 3, 4, 9);
+  ctx.restore();
+}
+// Kleine Vorschau der Welt im Kreis: Himmel, Sonne/Mond, Boden
+function worldBadge(def, x, y, r) {
+  ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.clip();
+  const g = ctx.createLinearGradient(0, y - r, 0, y + r); g.addColorStop(0, def.sky[0]); g.addColorStop(1, def.sky[1]);
+  ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  ctx.fillStyle = def.sun; el(x + r * .45, y - r * .4, r * .22, r * .22);
+  if (def.night) { ctx.fillStyle = def.sky[0]; el(x + r * .53, y - r * .47, r * .18, r * .18); }
+  ctx.fillStyle = def.near; el(x - r * .3, y + r * .55, r * .9, r * .45);
+  ctx.fillStyle = def.grass; ctx.fillRect(x - r, y + r * .5, r * 2, r * .2);
+  ctx.fillStyle = def.dirt; ctx.fillRect(x - r, y + r * .68, r * 2, r);
+  ctx.restore();
+}
+function drawMap() {
+  const time = G.time, th = THEMES.wiese;
+  G.cam = time * 25; drawBG(th);
+  ctx.fillStyle = th.grass; ctx.fillRect(0, 600, W, 120); ctx.fillStyle = th.dirt; ctx.fillRect(0, 616, W, 104);
+  const nodes = mapNodes(LEVELS.length);
+  // Pfad
+  ctx.lineCap = 'round'; ctx.setLineDash([2, 26]);
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const a = nodes[i], b = nodes[i + 1], open = isUnlocked(LEVELS, i + 1);
+    ctx.strokeStyle = open ? '#fff8e0' : 'rgba(255,255,255,.35)'; ctx.lineWidth = 16;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo((a.x + b.x) / 2, (a.y + b.y) / 2 + (i % 2 ? -60 : 60), b.x, b.y); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  // Knoten
+  nodes.forEach((n, i) => {
+    const def = LEVELS[i], open = isUnlocked(LEVELS, i), b = best(def), sel = i === G.mapSel;
+    const r = NODE_R * (sel ? 1.12 + Math.sin(time * 4) * .03 : 1);
+    ctx.fillStyle = 'rgba(40,25,80,.25)'; el(n.x, n.y + r * .9, r * .9, r * .25);
+    worldBadge(def, n.x, n.y, r);
+    ctx.lineWidth = sel ? 9 : 6; ctx.strokeStyle = sel ? '#ffe066' : '#fff';
+    ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2); ctx.stroke();
+    if (!open) {
+      ctx.fillStyle = 'rgba(60,60,80,.55)'; el(n.x, n.y, r, r); lockShape(n.x, n.y + 2, 1.1);
+    } else {
+      txt(String(i + 1), n.x, n.y + 4, 54, '#fff');
+      if (b) { // geschafft: Sterne darunter
+        starShape(n.x - 34, n.y + r + 30, 15, 0);
+        ctx.font = `800 28px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(35,20,60,.9)';
+        const s = `${b.got}/${b.total}`; ctx.strokeText(s, n.x - 14, n.y + r + 32); ctx.fillStyle = b.got === b.total ? '#ffe066' : '#fff'; ctx.fillText(s, n.x - 14, n.y + r + 32);
+      }
+    }
+  });
+  // Flinki hüpft zwischen den Welten
+  const a = nodes[G.mapFrom], z = nodes[G.mapSel], t = G.mapT;
+  const fx = a.x + (z.x - a.x) * t, fy = a.y + (z.y - a.y) * t - Math.sin(t * Math.PI) * 120;
+  const idle = t >= 1 ? Math.abs(Math.sin(time * 3)) * 10 : 0;
+  drawFox(fx, fy - NODE_R * 1.12 - idle, z.x >= a.x ? 1 : -1, time, 0, false);
+  // Titel der gewählten Welt
+  const def = LEVELS[G.mapSel];
+  rrect(W / 2 - 330, 22, 660, 92, 30); ctx.fillStyle = 'rgba(40,25,80,.6)'; ctx.fill();
+  txt(`${G.mapSel + 1}  ${def.name}`, W / 2, 70, 58, '#ffe066');
+  if (Math.sin(time * 4) > -.4) txt(isTouch && !padActive ? 'Tippe auf eine Welt' : '◀ ▶ wählen   ' + (padActive ? 'A' : 'Leertaste') + ' = los!', W / 2, H - 40, 34, '#fff');
+}
+
+/* ---------- Pause-Menü ---------- */
+function playIcon(x, y) { ctx.fillStyle = '#3ddc84'; ctx.beginPath(); ctx.moveTo(x - 22, y - 30); ctx.lineTo(x + 30, y); ctx.lineTo(x - 22, y + 30); ctx.closePath(); ctx.fill(); }
+function mapIcon(x, y) {
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = '#fff1c8'; ctx.beginPath(); ctx.moveTo(-40, -26); ctx.lineTo(-14, -34); ctx.lineTo(14, -26); ctx.lineTo(40, -34); ctx.lineTo(40, 26); ctx.lineTo(14, 34); ctx.lineTo(-14, 26); ctx.lineTo(-40, 34); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#d9c08a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-14, -34); ctx.lineTo(-14, 26); ctx.moveTo(14, -26); ctx.lineTo(14, 34); ctx.stroke();
+  ctx.strokeStyle = '#ff4d8d'; ctx.lineWidth = 4; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(-30, 18); ctx.quadraticCurveTo(0, -30, 28, 8); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#ff4d8d'; el(28, 8, 6, 6);
+  ctx.restore();
+}
+function drawPause() {
+  panel(330);
+  txt('Pause', W / 2, H / 2 - 100, 76, '#ffe066');
+  PAUSE_BTNS.forEach((b, i) => {
+    const sel = i === G.pauseSel;
+    rrect(b.x, b.y, b.w, b.h, 28); ctx.fillStyle = sel ? 'rgba(255,255,255,.95)' : 'rgba(255,255,255,.55)'; ctx.fill();
+    if (sel) { ctx.lineWidth = 7; ctx.strokeStyle = '#ffe066'; ctx.stroke(); }
+    (i === 0 ? playIcon : mapIcon)(b.x + b.w / 2, b.y + b.h / 2);
+  });
 }
 
 export function draw() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   if (G.state === 'title') { drawTitle(); return; }
   if (G.state === 'win') { drawWin(); return; }
+  if (G.state === 'map') { drawMap(); return; }
   const d = G.lvl.def;
   drawBG(d);
   ctx.save(); ctx.translate(-Math.round(G.cam), 0);
   drawTiles(d); drawEnts(); drawPlayer(); drawFx();
   ctx.restore();
   drawHUD();
-  if (G.state === 'pause') { panel(240); txt('Pause', W / 2, H / 2 - 40, 84, '#ffe066'); txt(hint() + ' zum Weiterspielen', W / 2, H / 2 + 50, 36, '#fff'); }
+  if (G.state === 'pause') drawPause();
   if (G.state === 'done') drawDone();
 }
