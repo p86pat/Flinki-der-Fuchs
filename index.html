@@ -79,6 +79,10 @@ canvas{display:block;max-width:100%}
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  // Neue Version übernommen → einmal neu laden, damit sie sofort sichtbar ist
+  let reloaded = false;
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
 }
 </script>
 </body>

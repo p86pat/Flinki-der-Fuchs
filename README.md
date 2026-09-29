@@ -211,8 +211,8 @@ Der ⛶-Knopf zeigt auf dem iPhone deshalb eine kurze Anleitung dazu.
 **Auf den TV:** Kontrollzentrum → Bildschirmsynchronisierung → Apple TV bzw. AirPlay-Gerät wählen.
 Das Bild ist 16:9, schwarze Ränder beim iPad-Format sind normal.
 
-**Updates:** Der Service Worker liefert zuerst die gespeicherte Version und lädt im Hintergrund nach.
-Neue Level oder Änderungen erscheinen deshalb beim **übernächsten** Start (App ganz schliessen und neu öffnen).
+**Updates:** Mit Internet lädt das Spiel immer die neueste Version. Nach einem Update lädt es sich einmal
+von selbst neu. Ohne Internet läuft die zuletzt gespeicherte Version.
 Wer eine neue Datei hinzufügt, trägt sie in `sw.js` unter `FILES` ein und erhöht `VERSION`.
 
 ## Hosting
@@ -249,4 +249,4 @@ Jeder Push auf `main` veröffentlicht automatisch die neue Version.
 4. Hinweis: Dateien unter `/local/` sind **ohne Anmeldung** erreichbar. Für ein Kinderspiel ist das unproblematisch.
    Leg dort aber keine privaten Daten ab.
 
-Ein Update geht so: Dateien ersetzen, dann auf dem iPad die App zweimal neu starten (siehe «Updates»).
+Ein Update geht so: Dateien ersetzen – beim nächsten Start (mit Netz) ist die neue Version da.

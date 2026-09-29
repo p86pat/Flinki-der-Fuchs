@@ -1,9 +1,9 @@
 /* Service Worker: macht das Spiel offline spielbar.
- * Strategie «stale-while-revalidate»: Antwort sofort aus dem Cache, im Hintergrund
- * wird die Datei neu geladen. Änderungen auf dem Server sind also beim übernächsten
- * Start sichtbar. Neue Dateien bitte in FILES eintragen und VERSION erhöhen.
+ * Strategie «zuerst Netz»: Mit Internet kommt immer die neueste Version (und wird
+ * gespeichert). Ohne Internet – oder wenn das Netz länger als 3 s braucht – kommt
+ * die gespeicherte Version. Neue Dateien bitte in FILES eintragen und VERSION erhöhen.
  */
-const VERSION = 'flinki-v9';
+const VERSION = 'flinki-v10';
 const FILES = [
   './',
   './index.html',
@@ -58,13 +58,20 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(caches.open(VERSION).then(async cache => {
     // Seitenaufrufe (auch mit ?…) auf index.html abbilden
-    const key = req.mode === 'navigate' ? './index.html' : req;
-    const cached = await cache.match(key, { ignoreSearch: req.mode === 'navigate' });
-    const fresh = fetch(req).then(res => {
+    const nav = req.mode === 'navigate', key = nav ? './index.html' : req;
+    const fromCache = () => cache.match(key, { ignoreSearch: nav });
+    const net = fetch(req, { cache: 'no-cache' }).then(res => {
       if (res.ok) cache.put(key, res.clone());
       return res;
-    }).catch(() => cached);
-    if (cached) { e.waitUntil(fresh); return cached; }
-    return fresh;
+    });
+    // Netz gewinnt – ausser es ist offline oder zu langsam
+    const slow = new Promise(r => setTimeout(r, 3000)).then(fromCache);
+    try {
+      const res = await Promise.race([net, slow]);
+      if (res) { e.waitUntil(net.catch(() => {})); return res; }
+      return await net;
+    } catch (err) {
+      return (await fromCache()) || Response.error();
+    }
   }));
 });
