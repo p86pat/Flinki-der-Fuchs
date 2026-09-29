@@ -110,6 +110,9 @@ läuft das Spiel trotzdem, aber ohne Offline-Modus und ohne echte App-Installati
 
 ### Variante A: GitHub Pages (empfohlen, HTTPS inklusive)
 
+0. Mit einem kostenlosen GitHub-Konto funktioniert Pages nur bei **öffentlichen** Repositories.
+   Ein privates Repository zuerst öffentlich machen: Settings → General → ganz unten «Danger Zone» →
+   «Change visibility» → Public. Alternative: GitHub Pro.
 1. Auf GitHub: Repository → **Settings → Pages**.
 2. Unter «Build and deployment»: Source **«Deploy from a branch»**, Branch **`main`**, Ordner **`/ (root)`** → Save.
 3. Nach 1–2 Minuten ist das Spiel erreichbar unter
