@@ -77,9 +77,16 @@ const de = document.documentElement;
 const reqFS = de.requestFullscreen || de.webkitRequestFullscreen;
 // Als installierte App (Home-Bildschirm) ist das Spiel schon im Vollbild.
 const installed = navigator.standalone || matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
-if (!reqFS || installed) fsBtn.classList.add('hidden');
+// iPhone: Safari kennt kein Vollbild für Webseiten → der Knopf zeigt stattdessen die Anleitung «Zum Home-Bildschirm»
+const iOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const homeHint = document.getElementById('homehint');
+if (installed || (!reqFS && !iOS)) fsBtn.classList.add('hidden');
 fsBtn.addEventListener('click', () => {
+  if (!reqFS) { homeHint.classList.remove('hidden'); fsBtn.blur(); return; }
   const inFS = document.fullscreenElement || document.webkitFullscreenElement;
   try { if (inFS) (document.exitFullscreen || document.webkitExitFullscreen).call(document); else reqFS.call(de); } catch (e) {}
   fsBtn.blur();
 });
+const closeHint = e => { e.preventDefault(); e.stopPropagation(); homeHint.classList.add('hidden'); };
+document.getElementById('homehint-ok').addEventListener('click', closeHint);
+homeHint.addEventListener('pointerdown', e => { if (e.target === homeHint) closeHint(e); });

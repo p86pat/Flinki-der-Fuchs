@@ -22,16 +22,26 @@
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
 body{height:100%;margin:0;overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 canvas{display:block;max-width:100%}
-.tb{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom,0px));width:112px;height:112px;border-radius:50%;background:var(--btn);border:3px solid var(--btn-line);display:flex;align-items:center;justify-content:center;font:800 46px 'Baloo 2',system-ui,sans-serif;color:#fff;touch-action:none}
-#bl{left:22px}#br{left:152px}#bj{right:22px;width:134px;height:134px;font-size:34px}
+.tb{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom,0px));width:min(112px,24vh);height:min(112px,24vh);border-radius:50%;background:var(--btn);border:3px solid var(--btn-line);display:flex;align-items:center;justify-content:center;font:800 46px 'Baloo 2',system-ui,sans-serif;color:#fff;touch-action:none}
+/* Abstand zu Notch/Dynamic Island und runden Ecken (iPhone quer) */
+#bl{left:calc(22px + env(safe-area-inset-left,0px))}#br{left:calc(22px + min(130px,28vh) + env(safe-area-inset-left,0px))}#bj{right:calc(22px + env(safe-area-inset-right,0px));width:min(134px,29vh);height:min(134px,29vh);font-size:34px}
 #bp{bottom:auto;top:calc(10px + env(safe-area-inset-top,0px));left:calc(50% - 36px);width:72px;height:72px;font-size:26px}
-#fs{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:12px;width:52px;height:52px;border-radius:14px;border:2px solid var(--btn-line);background:var(--btn);color:#fff;font:800 26px system-ui,sans-serif}
+#fs{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));width:52px;height:52px;border-radius:14px;border:2px solid var(--btn-line);background:var(--btn);color:#fff;font:800 26px system-ui,sans-serif}
 #fs:focus-visible{outline:3px solid #ffd43b}
 .hidden{display:none!important}
 /* Hochformat auf Touch-Geräten: Hinweis zum Drehen (nur Symbol, kein Text nötig) */
 #rotate{display:none;position:fixed;inset:0;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;gap:24px;color:#fff;font:800 40px 'Baloo 2',system-ui,sans-serif;z-index:10}
 #rotate svg{width:min(70vw,440px);height:auto}
 @media (orientation:portrait) and (pointer:coarse){#rotate{display:flex}}
+/* iPhone: Anleitung «Zum Home-Bildschirm» (Safari kann dort kein Vollbild für Webseiten) */
+#homehint{position:fixed;inset:0;z-index:20;background:rgba(10,20,40,.88);display:flex;align-items:center;justify-content:center;padding:16px;font:600 22px 'Baloo 2',system-ui,sans-serif;color:#fff}
+#homehint .card{background:#fff8e8;color:#3a2560;border-radius:28px;padding:18px 26px;max-width:620px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+#homehint h2{margin:0 0 8px;font-size:28px;font-weight:800}
+#homehint ol{margin:0;padding-left:0;list-style:none;display:grid;gap:10px}
+#homehint li{display:flex;align-items:center;gap:14px;line-height:1.2}
+#homehint .n{flex:none;width:36px;height:36px;border-radius:50%;background:#ffd43b;display:flex;align-items:center;justify-content:center;font-weight:800}
+#homehint svg{flex:none;width:40px;height:40px}
+#homehint button{margin-top:14px;width:100%;border:0;border-radius:18px;padding:10px;background:#3ddc84;color:#10233a;font:800 24px 'Baloo 2',system-ui,sans-serif}
 </style>
 </head>
 <body>
@@ -43,6 +53,17 @@ canvas{display:block;max-width:100%}
   <div class="tb" id="bp" aria-label="Pause">❚❚</div>
 </div>
 <button id="fs" aria-label="Vollbild">⛶</button>
+<div id="homehint" class="hidden" role="dialog" aria-label="Vollbild auf dem iPhone">
+  <div class="card">
+    <h2>Vollbild auf dem iPhone</h2>
+    <ol>
+      <li><span class="n">1</span><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="9" y="15" width="22" height="20" rx="4" fill="none" stroke="#3d8bff" stroke-width="3"/><path d="M20 24V5M13 11l7-7 7 7" fill="none" stroke="#3d8bff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>In Safari auf <b>Teilen</b> tippen</span></li>
+      <li><span class="n">2</span><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="6" y="6" width="28" height="28" rx="7" fill="none" stroke="#3a2560" stroke-width="3"/><path d="M20 13v14M13 20h14" stroke="#3a2560" stroke-width="3" stroke-linecap="round"/></svg><span><b>«Zum Home-Bildschirm»</b> wählen</span></li>
+      <li><span class="n">3</span><img src="./assets/icons/icon-180.png" alt="" width="40" height="40" style="border-radius:9px"><span>Flinki über das <b>Fuchs-Icon</b> starten – dann ist es Vollbild</span></li>
+    </ol>
+    <button type="button" id="homehint-ok">OK</button>
+  </div>
+</div>
 <div id="rotate" aria-label="Bitte das iPad drehen">
   <svg viewBox="0 0 220 110" aria-hidden="true">
     <rect x="8" y="14" width="52" height="82" rx="9" fill="none" stroke="#fff" stroke-width="6" opacity=".5"/>

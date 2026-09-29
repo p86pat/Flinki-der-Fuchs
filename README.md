@@ -168,7 +168,11 @@ Regeln und Tipps:
 - **Neues Level hinzufügen:** Datei `levels/meinlevel.txt` anlegen, in `levels/index.json` eintragen und
   (für den Offline-Modus) in `sw.js` bei `FILES` ergänzen und `VERSION` erhöhen.
 
-## Als App installieren (iPad)
+## Als App installieren (iPad & iPhone)
+
+**iPhone:** Safari erlaubt dort keinen Vollbild-Modus für Webseiten. Vollbild gibt es nur als App vom Home-Bildschirm.
+Der ⛶-Knopf zeigt auf dem iPhone deshalb eine kurze Anleitung dazu.
+
 
 1. Die Spiel-Adresse in **Safari** öffnen (nicht in Chrome, sonst gibt es kein «Zum Home-Bildschirm»).
 2. Teilen-Knopf ⎋ → **«Zum Home-Bildschirm»** → «Hinzufügen».
