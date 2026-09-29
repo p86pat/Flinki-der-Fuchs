@@ -3,7 +3,7 @@ import { T, ROWS } from './config.js';
 import { G } from './state.js';
 
 export function tile(tx, ty) { if (ty < 0 || ty >= ROWS) return '.'; if (tx < 0 || tx >= G.lvl.w) return '#'; return G.lvl.g[ty][tx]; }
-export const solid = c => c === '#' || c === 'b';
+export const solid = c => c === '#' || c === 'B';
 
 export function moveX(e, dx) {
   e.x += dx;

@@ -2,7 +2,7 @@
 import { W, H, T, STEP } from './config.js';
 import { G, P } from './state.js';
 import { sfx } from './audio.js';
-import { LEVELS, makeLevel } from './levels.js';
+import { LEVELS, makeLevel, loadLevels } from './levels.js';
 import { tile, solid, moveX, moveY, overlap } from './physics.js';
 import { readInput, updateTouchUI } from './input.js';
 import { msg, burst, updateFx } from './fx.js';
@@ -108,4 +108,11 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 if (document.fonts && document.fonts.load) document.fonts.load(`800 40px 'Baloo 2'`).catch(() => {});
-requestAnimationFrame(frame);
+try {
+  await loadLevels();
+  last = performance.now();
+  requestAnimationFrame(frame);
+} catch (e) {
+  console.error(e);
+  document.body.insertAdjacentHTML('beforeend', `<p style="position:fixed;inset:auto 0 40%;text-align:center;color:#fff;font:800 32px 'Baloo 2',sans-serif">Level konnten nicht geladen werden 😕<br><small>${e.message}</small></p>`);
+}

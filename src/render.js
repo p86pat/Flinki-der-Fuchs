@@ -59,7 +59,7 @@ function drawTiles(d) {
         for (let k = 0; k < 3; k++) el(px + 8 + k * 16, py + 13, 8, 6);
         ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(px, py, T + 1, 4);
       }
-    } else if (c === 'b') {
+    } else if (c === 'B') {
       rrect(px + 2, py + 2, T - 4, T - 4, 9); ctx.fillStyle = '#ffc93c'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = '#d98a00'; ctx.stroke();
       ctx.fillStyle = '#e8a400'; el(px + 16, py + 18, 4, 4); el(px + 32, py + 30, 4, 4); el(px + 30, py + 14, 3, 3);
     } else if (c === '-') {

@@ -3,8 +3,8 @@
 Ein Jump-and-Run-Spiel für Kinder von 6 bis 8 Jahren, als reine Web-App (Vanilla JS, ES-Module, kein Build-Schritt).
 Gedacht für Safari auf dem iPad, gespiegelt per AirPlay auf den TV und gespielt mit einem Bluetooth-Controller.
 
-> **Stand:** Schritt 2: Modulstruktur, installierbar als App (PWA) und offline spielbar.
-> Text-Maps, Weltkarte, 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
+> **Stand:** Schritt 3: Modulstruktur, PWA/offline, Level als Text-Maps.
+> Weltkarte, 8 Welten, Editor, 2 Spieler, Einstellungen und Musik folgen in den nächsten Schritten.
 
 ## Starten (lokal)
 
@@ -47,9 +47,12 @@ src/
   render.js         alles Zeichnen (Canvas), devicePixelRatio-Anpassung
   audio.js          Soundeffekte per WebAudio
   fx.js             Partikel und schwebende Texte
-  levels.js         Level-Liste und Aufbau
+  levels.js         lädt die Level-Dateien (levels/index.json)
+  levelformat.js    Text-Map lesen/schreiben, Level aufbauen
+  themes.js         Farbthemen (wiese, abend, nacht)
 levels/
-  welt1.js …        ein Level pro Datei
+  index.json        Reihenfolge der Welten
+  welt1.txt …       ein Level pro Datei (Text-Map)
 assets/
   fonts/            Schrift «Baloo 2» (SIL Open Font License, siehe OFL.txt)
   icons/            App-Icons (selbst gezeichnet)
@@ -58,33 +61,47 @@ tools/
   make-icons.mjs    dasselbe automatisch: node tools/make-icons.mjs (braucht Playwright)
 ```
 
-Alle Pfade sind **relativ** (`./src/…`, `../levels/…`). Das Spiel läuft deshalb auch in einem Unterordner,
+Alle Pfade sind **relativ** (`./src/…`, `./levels/…`). Das Spiel läuft deshalb auch in einem Unterordner,
 zum Beispiel unter GitHub Pages (`/Flinki-der-Fuchs/`) oder in Home Assistant (`/local/flinki/`).
 
-## Level-Format (aktuell)
+## Level-Format (Text-Map)
 
-Ein Level ist im Moment noch eine kleine Bau-Funktion wie im Prototyp. Das Raster ist 15 Kacheln hoch,
-Zeile 13 ist der normale Boden:
+Jedes Level ist eine Textdatei in `levels/`. Die Reihenfolge der Welten steht in `levels/index.json`.
 
-```js
-export default {
-  name: 'Sonnenwiese', sky: ['#6ec3ff', '#e2f5ff'], /* … Farben … */
-  build(b) {
-    b.init(100);          // Breite in Kacheln
-    b.start(2);           // Startspalte
-    b.ground(0, 22);      // Boden von Spalte 0 bis 22 (optional: Oberkante)
-    b.block(10, 10, 3);   // 3 feste Blöcke ab Spalte 10, Zeile 10
-    b.plank(21, 10, 5);   // Brett (von unten durchspringbar)
-    b.stars(5, 11, 3);    // 3 Sterne
-    b.snail(17);          // Schnecke
-    b.shroom(65);         // Sprungpilz
-    b.check(51);          // Checkpoint-Fähnchen
-    b.goal(96);           // Ziel-Fahne
-  }
-};
+```
+name: Sonnenwiese
+thema: wiese
+---
+....................................................................................................
+... (insgesamt 15 Zeilen, eine Zeile = eine Kachelreihe, ein Zeichen = eine Kachel 48×48 px) ...
+..F..............S............####......S..........C.............P..............S.........S.....Z...
+#######################..#####################..#######################..###########################
+#######################..#####################..#######################..###########################
 ```
 
-In einem der nächsten Schritte wird daraus eine **Text-Map** (ein Zeichen pro Kachel) mit Level-Editor im Browser.
+| Zeichen | Bedeutung |
+|---------|-----------|
+| `.` oder Leerzeichen | leer (Luft) |
+| `#` | Erde/Boden (oben automatisch mit Gras) |
+| `B` | gelber Block (fest) |
+| `-` | Holzbrett – von unten durchspringbar, man kann darauf stehen |
+| `F` | Startplatz von Flinki |
+| `*` | Stern |
+| `S` | Schnecke (läuft hin und her, schubst nur weg) |
+| `P` | Sprungpilz |
+| `C` | Checkpoint-Fähnchen (hier geht es nach dem Runterfallen weiter) |
+| `Z` | Ziel-Fahne |
+
+Regeln und Tipps:
+- **Kopf:** `name:` (wird am Levelanfang angezeigt) und `thema:` (`wiese`, `abend` oder `nacht`), danach eine Zeile `---`.
+- **Höhe:** 15 Zeilen. Fehlende Zeilen werden oben mit Luft aufgefüllt. Kürzere Zeilen werden rechts mit Luft aufgefüllt.
+- **Figuren und Objekte** stehen auf dem Boden ihrer Zelle, direkt darunter sollte also Boden, ein Block oder ein Brett sein.
+  Sterne schweben in der Mitte ihrer Zelle.
+- Der **normale Boden** sind die unteren 2 Zeilen, Figuren kommen in die Zeile darüber.
+  Eine Lücke im Boden ist ein Loch, bei dem man zum letzten Checkpoint zurückkommt.
+- Flinki springt normal etwa **4 Kacheln hoch** und rund **5 Lücken weit**, mit dem Pilz deutlich höher.
+- **Neues Level hinzufügen:** Datei `levels/meinlevel.txt` anlegen, in `levels/index.json` eintragen und
+  (für den Offline-Modus) in `sw.js` bei `FILES` ergänzen und `VERSION` erhöhen.
 
 ## Als App installieren (iPad)
 
