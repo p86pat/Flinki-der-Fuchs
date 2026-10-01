@@ -3,7 +3,7 @@
  * gespeichert). Ohne Internet – oder wenn das Netz länger als 3 s braucht – kommt
  * die gespeicherte Version. Neue Dateien bitte in FILES eintragen und VERSION erhöhen.
  */
-const VERSION = 'flinki-v10';
+const VERSION = 'flinki-v11';
 const FILES = [
   './',
   './index.html',

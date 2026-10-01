@@ -46,9 +46,14 @@ function content(q) {
     case 'compare': // zwei Gruppen links und rechts
       rrect(W / 2 - 3, 170, 6, 290, 3); ctx.fillStyle = '#e4d8f0'; ctx.fill();
       objectGrid(q.obj, q.a, W / 2 - 240, cy, 62); objectGrid(q.obj, q.b, W / 2 + 240, cy, 62); break;
-    case 'plus': case 'minus': case 'double': case 'times': {
-      const op = { plus: '+', minus: '−', double: '+', times: '×' }[q.type];
-      const small = (q.type === 'plus' || q.type === 'double') ? q.a + q.b <= 10 : q.type === 'minus' ? q.a <= 10 : q.a * q.b <= 20;
+    case 'gap': case 'bigger': label(q.eq, W / 2, cy, 100); break;
+    case 'half': label(`Hälfte von ${q.a} = ?`, W / 2, cy, 88); break;
+    case 'story':
+      q.lines.forEach((l, i) => label(l, W / 2, cy - 70 + i * 70, 50));
+      break;
+    case 'plus': case 'minus': case 'double': case 'times': case 'divide': {
+      const op = q.op || { plus: '+', minus: '−', double: '+', times: '×', divide: ':' }[q.type];
+      const small = q.type === 'divide' ? false : (q.type === 'plus' || q.type === 'double') ? q.a + q.b <= 10 : q.type === 'minus' ? q.a <= 10 : q.a * q.b <= 20;
       label(`${q.a} ${op} ${q.b} = ?`, W / 2, small ? 235 : cy, 96);
       if (!small) break;
       if (q.type === 'minus') objectGrid('apfel', q.a, W / 2, 390, 66, q.a - q.b);

@@ -7,22 +7,26 @@
 export const STAGES = [
   { id: 1, name: 'Kindergarten', sample: '3 + 2' },
   { id: 2, name: '1. Klasse', sample: '7 − 4' },
-  { id: 3, name: '2. Klasse', sample: '15 + 4' },
-  { id: 4, name: '3. Klasse', sample: '6 × 7' }
+  { id: 3, name: '2. Klasse', sample: '37 + 8' },
+  { id: 4, name: '3. Klasse', sample: '456 + 38' }
 ];
 
 // Rätselarten je Stufe (Name fürs Eltern-Menü)
 export const TYPE_NAMES = {
   count: 'Zählen', compare: 'Mehr/weniger', plus: 'Plus', minus: 'Minus', pattern: 'Muster',
   letter: 'Anlaute', missing: 'Zahlenreihen', clock: 'Uhrzeit', money: 'Geld', read: 'Wörter lesen',
-  syllables: 'Silben', double: 'Verdoppeln', times: 'Einmaleins'
+  syllables: 'Silben', double: 'Verdoppeln', half: 'Halbieren', times: 'Einmaleins', divide: 'Geteilt',
+  gap: 'Platzhalter', story: 'Textaufgaben', bigger: 'Grösser/kleiner'
 };
 const POOLS = {
   1: ['count', 'compare', 'pattern', 'letter', 'plus'],
   2: ['count', 'plus', 'minus', 'missing', 'pattern', 'letter', 'read', 'clock', 'compare'],
-  3: ['plus', 'minus', 'missing', 'double', 'clock', 'money', 'read', 'syllables', 'pattern'],
-  4: ['plus', 'minus', 'times', 'missing', 'clock', 'money', 'syllables', 'read']
+  // 2. und 3. Klasse: Rechnen kommt öfter vor (doppelte Einträge = häufiger)
+  3: ['plus', 'plus', 'minus', 'minus', 'times', 'times', 'gap', 'double', 'half', 'story', 'missing', 'clock', 'money', 'read', 'syllables'],
+  4: ['plus', 'plus', 'minus', 'minus', 'times', 'times', 'divide', 'divide', 'gap', 'gap', 'story', 'story', 'bigger', 'missing', 'clock', 'money']
 };
+const NAMES = [['Lena', 'Sie'], ['Tim', 'Er'], ['Mia', 'Sie'], ['Noah', 'Er'], ['Flinki', 'Er'], ['Lara', 'Sie'], ['Elias', 'Er']];
+const THINGS = ['Sterne', 'Äpfel', 'Murmeln', 'Sticker', 'Nüsse'];
 
 // Wörter mit Bild (pics.js) und Silben
 export const WORDS = {
@@ -60,6 +64,17 @@ export function makeQuiz(stage = 1, p = 0, avoid = null, rnd = Math.random) {
     return [...set];
   };
 
+  // grosse Zahlen: typische Fehler als Ablenker (Übertrag vergessen = ±10, ±100, um 1 verzählt)
+  const bigOpts = ans => {
+    const c = shuffle([ans + 10, ans - 10, ans + 1, ans - 1, ...(ans >= 100 ? [ans + 100, ans - 100] : [])]);
+    return [...new Set(c.filter(x => x >= 0 && x !== ans))].slice(0, 2);
+  };
+  // Zehnerübergang erzwingen: Einer zusammen ≥ 10 (plus) bzw. Einer zu klein (minus)
+  const carryPlus = (lo, hi, bLo, bHi) => { let a, b, n = 0; do { a = int(lo, hi); b = int(bLo, bHi); } while ((a % 10 + b % 10 < 10) && n++ < 50); return [a, b]; };
+  const borrowMinus = (lo, hi, bLo, bHi) => { let a, b, n = 0; do { a = int(lo, hi); b = int(bLo, Math.min(bHi, a - 1)); } while ((a % 10 >= b % 10) && n++ < 50); return [a, b]; };
+  const calc = (t, a, b, ans, prompt = 'Rechne!') => finish({ type: t, a, b, op: { plus: '+', minus: '−', times: '×', divide: ':' }[t] || '+', kind: 'number', prompt,
+    say: `Wie viel ist ${a} ${{ plus: 'plus', minus: 'minus', times: 'mal', divide: 'geteilt durch' }[t]} ${b}?` }, ans, ans >= 20 ? bigOpts(ans) : numOpts(ans));
+
   const pool = POOLS[stage] || POOLS[1];
   const type = pick(pool.length > 1 ? pool.filter(t => t !== avoid) : pool);
 
@@ -75,28 +90,84 @@ export function makeQuiz(stage = 1, p = 0, avoid = null, rnd = Math.random) {
       return finish({ type, obj, a, b, kind: 'side', prompt: 'Wo sind mehr?', say: `Wo sind mehr ${COUNT_OBJ[obj]}?` }, ans, [ans === 'links' ? 'rechts' : 'links']);
     }
     case 'plus': {
-      if (stage >= 4) { // bis 100: Zehner, dann Zehner+Einer
-        const a = p < .5 ? int(1, 8) * 10 : int(11, 79), b = p < .5 ? int(1, 9 - a / 10) * 10 : int(1, 9) + (rnd() < .5 ? 10 : 0);
-        return finish({ type, a, b, kind: 'number', prompt: 'Rechne!', say: `Wie viel ist ${a} plus ${b}?` }, a + b, numOpts(a + b, 3, a % 10 || b % 10 ? 1 : 10));
+      if (stage === 4) { // bis 1000
+        const k = pick(p < .4 ? ['HZ', 'HZ', 'HZE+E'] : ['HZ', 'HZE+E', 'HZE+ZE', 'HZE+ZE']);
+        if (k === 'HZ') { let a, b; do { a = int(1, 7) * 100 + int(0, 9) * 10; b = int(1, 8) * 100 + int(1, 9) * 10; } while (a + b > 990); return calc('plus', a, b, a + b); }
+        let a, b; do { [a, b] = k === 'HZE+E' ? carryPlus(101, 890, 3, 9) : carryPlus(101, 850, 12, 99); } while (a + b > 999);
+        return calc('plus', a, b, a + b);
       }
-      const max = stage === 1 ? 5 : stage === 2 ? 10 : 20, a = int(1, max - 1), b = int(1, max - a);
+      if (stage === 3) { // bis 100 mit Zehnerübergang
+        const k = pick(p < .3 ? ['E+E', 'ZE+E'] : ['ZE+E', 'ZE+ZE', 'ZE+ZE']);
+        const [a, b] = k === 'E+E' ? carryPlus(3, 9, 3, 9) : k === 'ZE+E' ? carryPlus(12, 89, 3, 9) : carryPlus(12, 69, 12, 29);
+        return calc('plus', a, b, a + b);
+      }
+      const max = stage === 1 ? 5 : 10, a = int(1, max - 1), b = int(1, max - a);
       return finish({ type, a, b, kind: 'number', prompt: 'Rechne!', say: `Wie viel ist ${a} plus ${b}?` }, a + b, numOpts(a + b));
     }
     case 'minus': {
-      if (stage >= 4) {
-        const a = p < .5 ? int(3, 10) * 10 : int(30, 99), b = p < .5 ? int(1, a / 10 - 1) * 10 : int(2, 9) + (rnd() < .5 ? 10 : 0);
-        return finish({ type, a, b, kind: 'number', prompt: 'Rechne!', say: `Wie viel ist ${a} minus ${b}?` }, a - b, numOpts(a - b, 3, a % 10 || b % 10 ? 1 : 10));
+      if (stage === 4) {
+        const k = pick(p < .4 ? ['HZ', 'HZ', 'HZE-E'] : ['HZ', 'HZE-E', 'HZE-ZE', 'HZE-ZE']);
+        if (k === 'HZ') { const a = int(3, 9) * 100 + int(0, 9) * 10, b = int(1, Math.floor(a / 100) - 1) * 100 + int(1, 9) * 10; return calc('minus', a, b, a - b); }
+        const [a, b] = k === 'HZE-E' ? borrowMinus(110, 990, 3, 9) : borrowMinus(150, 990, 12, 99);
+        return calc('minus', a, b, a - b);
       }
-      const max = stage === 2 ? 10 : 20, a = int(2, max), b = int(1, a - 1);
+      if (stage === 3) {
+        const k = pick(p < .3 ? ['ZE-E'] : ['ZE-E', 'ZE-ZE', 'ZE-ZE']);
+        const [a, b] = k === 'ZE-E' ? borrowMinus(21, 99, 3, 9) : borrowMinus(31, 99, 12, 59);
+        return calc('minus', a, b, a - b);
+      }
+      const a = int(2, 10), b = int(1, a - 1);
       return finish({ type, a, b, kind: 'number', prompt: 'Rechne!', say: `Wie viel ist ${a} minus ${b}?` }, a - b, numOpts(a - b));
     }
     case 'double': {
-      const a = int(2, lerp(6, 10));
-      return finish({ type, a, b: a, kind: 'number', prompt: 'Verdopple!', say: `Was ist das Doppelte von ${a}?` }, 2 * a, [2 * a + 2, 2 * a - 1]);
+      const a = stage >= 3 ? (p < .4 ? int(6, 25) : int(15, 50)) : int(2, lerp(6, 10));
+      return finish({ type, a, b: a, op: '+', kind: 'number', prompt: 'Verdopple!', say: `Was ist das Doppelte von ${a}?` }, 2 * a, 2 * a >= 20 ? bigOpts(2 * a) : [2 * a + 2, 2 * a - 1]);
+    }
+    case 'half': {
+      const h = p < .4 ? int(3, 25) : int(10, 50), a = 2 * h;
+      return finish({ type, a, kind: 'number', prompt: 'Halbiere!', say: `Was ist die Hälfte von ${a}?` }, h, h >= 20 ? bigOpts(h) : numOpts(h));
     }
     case 'times': {
-      const row = p < .4 ? pick([2, 5, 10]) : int(2, 9), k = int(2, 10);
-      return finish({ type, a: k, b: row, kind: 'number', prompt: 'Einmaleins', say: `Wie viel ist ${k} mal ${row}?` }, k * row, [...new Set([k * row + row, k * row - row, (k + 1) * (row + 1), k * row + 1].filter(x => x > 0 && x !== k * row))].slice(0, 2));
+      const rows = stage === 3 ? (p < .5 ? [2, 5, 10] : [2, 3, 4, 5, 10]) : [2, 3, 4, 5, 6, 7, 8, 9];
+      const row = pick(rows), k = int(2, 10);
+      if (stage === 4 && p > .5 && rnd() < .3) { const z = int(2, 9) * 10, m = int(2, 9); return calc('times', m, z, m * z); } // 4 × 30
+      const ans = k * row;
+      return finish({ type, a: k, b: row, op: '×', kind: 'number', prompt: 'Einmaleins', say: `Wie viel ist ${k} mal ${row}?` }, ans,
+        [...new Set(shuffle([ans + row, ans - row, ans + 1, ans - 1, (k + 1) * (row + 1)]).filter(x => x > 0 && x !== ans))].slice(0, 2));
+    }
+    case 'divide': {
+      const b = int(2, 9), q = int(2, 10), a = b * q;
+      return finish({ type, a, b, op: ':', kind: 'number', prompt: 'Geteilt', say: `Wie viel ist ${a} geteilt durch ${b}?` }, q,
+        [...new Set(shuffle([q + 1, q - 1, q + 2, b]).filter(x => x > 0 && x !== q))].slice(0, 2));
+    }
+    case 'gap': { // Platzhalter: ? + 7 = 15, 6 × ? = 42
+      const ops = stage === 3 ? ['plus', 'minus', 'times'] : ['plus', 'minus', 'times', 'divide', 'times'];
+      const op = pick(ops);
+      let a, b, c, hole = rnd() < .5 ? 0 : 1;
+      if (op === 'plus') { [a, b] = stage === 3 ? carryPlus(5, 60, 3, 30) : carryPlus(100, 700, 12, 99); c = a + b; }
+      else if (op === 'minus') { [a, b] = stage === 3 ? borrowMinus(21, 99, 3, 40) : borrowMinus(150, 900, 12, 99); c = a - b; }
+      else if (op === 'times') { a = int(2, 10); b = stage === 3 ? pick([2, 5, 10, 3, 4]) : int(2, 9); c = a * b; }
+      else { b = int(2, 9); c = int(2, 10); a = b * c; }
+      const ans = hole === 0 ? a : b, sym = { plus: '+', minus: '−', times: '×', divide: ':' }[op];
+      const left = hole === 0 ? '?' : String(a), right = hole === 1 ? '?' : String(b);
+      return finish({ type, eq: `${left} ${sym} ${right} = ${c}`, kind: 'number', prompt: 'Welche Zahl fehlt?',
+        say: `Welche Zahl fehlt? ${left === '?' ? 'Wie viel' : left} ${{ plus: 'plus', minus: 'minus', times: 'mal', divide: 'geteilt durch' }[op]} ${right === '?' ? 'wie viel' : right} gibt ${c}.` }, ans,
+        ans >= 20 ? bigOpts(ans) : [...new Set(shuffle([ans + 1, ans - 1, ans + 2, c]).filter(x => x > 0 && x !== ans))].slice(0, 2));
+    }
+    case 'bigger': { // 348 ? 384 → < > =
+      const a = int(100, 999), r = rnd();
+      const b = r < .2 ? a : r < .6 ? Number(String(a).split('').reverse().join('')) || a + 10 : a + pick([-100, -10, -1, 1, 10, 100]);
+      const ans = a < b ? '<' : a > b ? '>' : '=';
+      return finish({ type, eq: `${a}  ?  ${b}`, kind: 'letter', prompt: 'Grösser, kleiner, gleich?', say: `Ist ${a} grösser, kleiner oder gleich ${b}?` }, ans, ['<', '>', '='].filter(x => x !== ans));
+    }
+    case 'story': { // kurze Textaufgabe (wird vorgelesen)
+      const [name, pron] = pick(NAMES), thing = pick(THINGS), k = pick(stage === 3 ? ['plus', 'minus', 'times'] : ['plus', 'minus', 'times', 'divide']);
+      let lines, ans;
+      if (k === 'plus') { const [a, b] = stage === 3 ? carryPlus(12, 60, 5, 30) : carryPlus(120, 600, 25, 250); ans = a + b; lines = [`${name} hat ${a} ${thing}.`, `${pron} bekommt ${b} dazu.`, 'Wie viele sind es jetzt?']; }
+      else if (k === 'minus') { const [a, b] = stage === 3 ? borrowMinus(31, 99, 5, 40) : borrowMinus(200, 900, 25, 199); ans = a - b; lines = [`${name} hat ${a} ${thing}.`, `${pron} verschenkt ${b}.`, 'Wie viele bleiben übrig?']; }
+      else if (k === 'times') { const a = int(2, stage === 3 ? 5 : 9), b = stage === 3 ? pick([2, 5, 10]) : int(3, 9); ans = a * b; lines = [`In einer Schachtel sind ${b} ${thing}.`, `${name} hat ${a} Schachteln.`, 'Wie viele sind es zusammen?']; }
+      else { const b = int(2, 6), q = int(3, 9); ans = q; lines = [`${b * q} ${thing} werden gerecht`, `auf ${b} Kinder verteilt.`, 'Wie viele bekommt jedes Kind?']; }
+      return finish({ type, lines, kind: 'number', prompt: 'Textaufgabe', say: lines.join(' ') }, ans, ans >= 20 ? bigOpts(ans) : numOpts(ans));
     }
     case 'missing': {
       const step = stage === 2 ? 1 : stage === 3 ? pick([1, 2, 5, 10]) : pick([2, 3, 4, 5, 10, 20]);
