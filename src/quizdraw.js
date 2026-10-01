@@ -2,6 +2,8 @@
 import { W, H, FONT } from './config.js';
 import { ctx, el, rrect, starShape } from './gfx.js';
 import { drawPic, drawShape, drawCoin, drawClock } from './pics.js';
+import { drawFox } from './gfx.js';
+import { POLYS } from './quiz.js';
 import { QUIZ_PANEL, QUIZ_SPEAK, QUIZ_CLOSE, quizButtons } from './ui.js';
 
 const INK = '#3a2560';
@@ -39,9 +41,45 @@ function objectGrid(obj, n, cx, cy, maxS, crossFrom = n) {
   }
 }
 
-function content(q) {
+// Vieleck (Ecken zählen)
+function polygon(name, x, y, r) {
+  const n = POLYS[name];
+  ctx.fillStyle = '#ffb020'; ctx.strokeStyle = INK; ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.beginPath();
+  if (n === 0) ctx.arc(x, y, r, 0, Math.PI * 2);
+  else if (name === 'Rechteck') ctx.rect(x - r * 1.4, y - r * .75, r * 2.8, r * 1.5);
+  else for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / n + (n === 4 ? Math.PI / 4 : 0); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+// Bilder in einer Reihe (Merkspiel)
+function picRow(items, cy, size, hidden) {
+  const n = items.length, gap = Math.min(190, 860 / n), x0 = W / 2 - (n - 1) * gap / 2;
+  items.forEach((w, i) => {
+    const x = x0 + i * gap;
+    rrect(x - gap * .44, cy - gap * .44, gap * .88, gap * .88, 20); ctx.fillStyle = hidden ? '#b18cff' : '#fff'; ctx.fill();
+    ctx.lineWidth = 4; ctx.strokeStyle = '#d8cbe8'; ctx.stroke();
+    if (hidden) label('?', x, cy + 6, gap * .5, '#fff'); else drawPic(w, x, cy, size);
+  });
+}
+
+function content(q, t = 9) {
   const cy = 320;
   switch (q.type) {
+    case 'color': label(q.colorName, W / 2, cy, 120); break;
+    case 'size': case 'odd': ctx.save(); ctx.translate(W / 2, cy + 110); ctx.scale(2.6, 2.6); drawFox(0, -Math.abs(Math.sin(t * 3)) * 6, 1, t, 0, false); ctx.restore(); break;
+    case 'rhyme': drawPic(q.word, W / 2, cy - 20, 210); label(q.word, W / 2, cy + 120, 56); break;
+    case 'memory': {
+      const hidden = t >= q.showT;
+      picRow(q.items, cy, Math.min(150, 760 / q.items.length), hidden);
+      if (!hidden) { // Zeitbalken
+        const f = 1 - t / q.showT; rrect(W / 2 - 200, 440, 400, 16, 8); ctx.fillStyle = '#eee6f5'; ctx.fill();
+        rrect(W / 2 - 200, 440, Math.max(16, 400 * f), 16, 8); ctx.fillStyle = '#3ddc84'; ctx.fill();
+      }
+      break;
+    }
+    case 'gapletter': drawPic(q.word, W / 2, cy - 40, 170); label(q.masked, W / 2, cy + 115, 80); break;
+    case 'corners': polygon(q.shape, W / 2, cy, 120); break;
+    case 'days': label(q.eq, W / 2, cy, 76); break;
+    case 'english': drawPic(q.word, W / 2, cy, 230); break;
     case 'count': objectGrid(q.obj, q.n, W / 2, cy, 90); break;
     case 'compare': // zwei Gruppen links und rechts
       rrect(W / 2 - 3, 170, 6, 290, 3); ctx.fillStyle = '#e4d8f0'; ctx.fill();
@@ -110,7 +148,8 @@ function answer(q, i, b) {
   const x = b.x + b.w / 2, y = b.y + b.h / 2, v = q.options[i];
   if (q.kind === 'number') label(String(v), x, y + 6, String(v).length > 2 ? 84 : 104);
   else if (q.kind === 'letter') label(v, x, y + 8, 116);
-  else if (q.kind === 'text') label(v, x, y + 6, v.length <= 4 ? 72 : v.length <= 6 ? 56 : 44);
+  else if (q.kind === 'text') label(v, x, y + 6, v.length <= 4 ? 72 : v.length <= 6 ? 56 : v.length <= 8 ? 44 : 36);
+  else if (q.kind === 'sized') { const [w, f] = v.split(':'); drawPic(w, x, y, 118 * Number(f)); }
   else if (q.kind === 'pic') drawPic(v, x, y, 118);
   else if (q.kind === 'side') arrow(x, y, v === 'links' ? -1 : 1);
   else drawShape(v, x, y, 46);
@@ -126,9 +165,10 @@ export function drawQuiz(Q, padActive) {
   rrect(P.x, P.y, P.w, P.h, 40); ctx.fillStyle = '#fff8e8'; ctx.fill(); ctx.lineWidth = 8; ctx.strokeStyle = '#ffd43b'; ctx.stroke();
   // Kopf: Stern-Symbol, Frage, Vorlesen, Schliessen
   speaker(QUIZ_SPEAK); closeBtn(QUIZ_CLOSE);
-  label(q.prompt, W / 2, 108, 58);
-  content(q);
-  quizButtons(q.options.length).forEach((b, i) => {
+  const prompt = q.prompt2 && t >= q.showT ? q.prompt2 : q.prompt;
+  label(prompt, W / 2, 108, prompt.length > 24 ? 46 : 58);
+  content(q, t);
+  if (!(q.showT && t < q.showT)) quizButtons(q.options.length).forEach((b, i) => {
     const wrong = Q.wrong.includes(i), right = Q.solved && i === q.correct, sel = !Q.solved && i === Q.sel && !wrong;
     const dx = Q.shakeI === i && Q.shake > 0 ? Math.sin(Q.shake * 60) * 10 * Q.shake / .4 : 0;
     const lift = sel ? -6 : 0;

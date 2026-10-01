@@ -16,17 +16,41 @@ export const TYPE_NAMES = {
   count: 'Zählen', compare: 'Mehr/weniger', plus: 'Plus', minus: 'Minus', pattern: 'Muster',
   letter: 'Anlaute', missing: 'Zahlenreihen', clock: 'Uhrzeit', money: 'Geld', read: 'Wörter lesen',
   syllables: 'Silben', double: 'Verdoppeln', half: 'Halbieren', times: 'Einmaleins', divide: 'Geteilt',
-  gap: 'Platzhalter', story: 'Textaufgaben', bigger: 'Grösser/kleiner'
+  gap: 'Platzhalter', story: 'Textaufgaben', bigger: 'Grösser/kleiner',
+  color: 'Farben', size: 'Gross/klein', odd: 'Was passt nicht?', rhyme: 'Reime', memory: 'Merkspiel',
+  gapletter: 'Buchstabe fehlt', corners: 'Ecken', days: 'Wochentage', english: 'Englisch'
 };
 const POOLS = {
-  1: ['count', 'compare', 'pattern', 'letter', 'plus'],
-  2: ['count', 'plus', 'minus', 'missing', 'pattern', 'letter', 'read', 'clock', 'compare'],
+  1: ['count', 'compare', 'pattern', 'letter', 'plus', 'color', 'size', 'odd', 'rhyme', 'memory'],
+  2: ['count', 'plus', 'minus', 'missing', 'pattern', 'letter', 'read', 'clock', 'compare', 'rhyme', 'odd', 'memory', 'gapletter', 'corners'],
   // 2. und 3. Klasse: Rechnen kommt öfter vor (doppelte Einträge = häufiger)
-  3: ['plus', 'plus', 'minus', 'minus', 'times', 'times', 'gap', 'double', 'half', 'story', 'missing', 'clock', 'money', 'read', 'syllables'],
-  4: ['plus', 'plus', 'minus', 'minus', 'times', 'times', 'divide', 'divide', 'gap', 'gap', 'story', 'story', 'bigger', 'missing', 'clock', 'money']
+  3: ['plus', 'plus', 'minus', 'minus', 'times', 'times', 'gap', 'double', 'half', 'story', 'missing', 'clock', 'money', 'read', 'syllables',
+    'rhyme', 'memory', 'gapletter', 'corners', 'days'],
+  4: ['plus', 'plus', 'minus', 'minus', 'times', 'times', 'divide', 'divide', 'gap', 'gap', 'story', 'story', 'bigger', 'missing', 'clock', 'money',
+    'english', 'english', 'days', 'memory', 'gapletter']
 };
 const NAMES = [['Lena', 'Sie'], ['Tim', 'Er'], ['Mia', 'Sie'], ['Noah', 'Er'], ['Flinki', 'Er'], ['Lara', 'Sie'], ['Elias', 'Er']];
 const THINGS = ['Sterne', 'Äpfel', 'Murmeln', 'Sticker', 'Nüsse'];
+// Reimpaare (alle mit Bild)
+const RHYMES = [['Haus', 'Maus'], ['Fisch', 'Tisch'], ['Rose', 'Hose'], ['Tanne', 'Kanne'], ['Zelt', 'Geld'], ['Eis', 'Kreis']];
+// Gruppen für «Was passt nicht?»
+const GROUPS = {
+  essen: ['Apfel', 'Banane', 'Tomate', 'Eis'], himmel: ['Sonne', 'Mond', 'Stern', 'Wolke'],
+  pflanzen: ['Blume', 'Pilz', 'Tanne', 'Rose'], sachen: ['Tisch', 'Leiter', 'Kanne', 'Uhr'], fahren: ['Auto', 'Rakete']
+};
+const COLOR_NAMES = { rot: '#ff4d4d', blau: '#3d8bff', grün: '#3ddc84', gelb: '#ffd43b', lila: '#b18cff', orange: '#ff8a2a' };
+const DAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+export const ENGLISH = {
+  Apfel: 'apple', Ball: 'ball', Fisch: 'fish', Sonne: 'sun', Mond: 'moon', Haus: 'house', Stern: 'star', Auto: 'car',
+  Herz: 'heart', Uhr: 'clock', Banane: 'banana', Blume: 'flower', Maus: 'mouse', Tisch: 'table', Fuchs: 'fox',
+  Zelt: 'tent', Tomate: 'tomato', Wolke: 'cloud', Rakete: 'rocket', Rose: 'rose'
+};
+// alle Wörter mit Bild (für Merkspiel, Ablenker)
+let picsCache = null;
+const allPics = () => picsCache || (picsCache = [...new Set([...Object.keys(WORDS), ...RHYMES.flat(), ...Object.values(GROUPS).flat()])]);
+// Formen für «Ecken»
+export const POLYS = { Dreieck: 3, Quadrat: 4, Rechteck: 4, Fünfeck: 5, Sechseck: 6, Kreis: 0 };
 
 // Wörter mit Bild (pics.js) und Silben
 export const WORDS = {
@@ -208,6 +232,57 @@ export function makeQuiz(stage = 1, p = 0, avoid = null, rnd = Math.random) {
     case 'syllables': {
       const word = pick(Object.keys(WORDS)), n = WORDS[word].split('-').length;
       return finish({ type, word, kind: 'number', prompt: 'Wie viele Silben?', say: `Wie viele Silben hat ${word}? Klatsch mit!` }, n, [1, 2, 3, 4].filter(x => x !== n).sort(() => rnd() - .5).slice(0, 2));
+    }
+    case 'color': { // «Welcher Stern ist blau?»
+      const names = shuffle(Object.keys(COLOR_NAMES)), shape = pick(SHAPES), want = names[0];
+      const q = { kreis: 'Welcher Kreis', dreieck: 'Welches Dreieck', quadrat: 'Welches Quadrat', stern: 'Welcher Stern' }[shape] + ` ist ${want}?`;
+      return finish({ type, colorName: want, kind: 'shape', prompt: q, say: q },
+        `${shape}:${COLOR_NAMES[want]}`, [`${shape}:${COLOR_NAMES[names[1]]}`, `${shape}:${COLOR_NAMES[names[2]]}`]);
+    }
+    case 'size': { // gleiches Bild in drei Grössen
+      const w = pick(['Ball', 'Apfel', 'Stern', 'Haus', 'Fisch', 'Blume']), big = rnd() < .5;
+      const sizes = shuffle([.55, .8, 1.05]), ans = big ? 1.05 : .55;
+      return finish({ type, kind: 'sized', prompt: big ? 'Welcher ist am grössten?' : 'Welcher ist am kleinsten?', say: big ? 'Welches ist am grössten?' : 'Welches ist am kleinsten?' },
+        `${w}:${ans}`, sizes.filter(x => x !== ans).map(x => `${w}:${x}`));
+    }
+    case 'odd': { // zwei gehören zusammen, eins passt nicht
+      const keys = shuffle(Object.keys(GROUPS).filter(k => GROUPS[k].length >= 2)), g1 = keys[0], g2 = keys[1];
+      const [a, b] = shuffle([...GROUPS[g1]]), odd = pick(GROUPS[g2]);
+      return finish({ type, kind: 'pic', prompt: 'Was passt nicht dazu?', say: 'Zwei gehören zusammen. Was passt nicht dazu?' }, odd, [a, b]);
+    }
+    case 'rhyme': {
+      const [w, r] = shuffle([...pick(RHYMES)]);
+      const others = shuffle(allPics().filter(x => x !== w && x !== r)).slice(0, 2);
+      return finish({ type, word: w, kind: 'pic', prompt: `Was reimt sich auf ${w}?`, say: `Was reimt sich auf ${w}?` }, r, others);
+    }
+    case 'memory': { // Bilder kurz zeigen, dann verdecken
+      const n = stage === 1 ? 3 : stage === 2 ? 4 : 5, items = shuffle([...allPics()]).slice(0, n);
+      const others = shuffle(allPics().filter(x => !items.includes(x))).slice(0, 2);
+      return finish({ type, items, showT: stage === 1 ? 4.5 : 3.5, kind: 'pic', prompt: 'Merk dir die Bilder!', prompt2: 'Was war dabei?', say: 'Merk dir die Bilder!', say2: 'Was war dabei?' },
+        pick(items), others);
+    }
+    case 'gapletter': { // F_SCH
+      const words = Object.keys(WORDS).filter(w => w.length >= (stage === 2 ? 3 : 4) && w.length <= (stage === 2 ? 5 : 7));
+      const word = pick(words), i = int(1, word.length - 1), ch = word[i];
+      const others = shuffle('aeiounrstlmh'.split('').filter(c => c !== ch.toLowerCase())).slice(0, 2);
+      return finish({ type, word, masked: word.slice(0, i) + '_' + word.slice(i + 1), kind: 'letter', prompt: 'Welcher Buchstabe fehlt?', say: `Welcher Buchstabe fehlt bei ${word}?` }, ch, others);
+    }
+    case 'corners': {
+      const names = Object.keys(POLYS).filter(n => stage === 2 ? POLYS[n] <= 5 : true), shape = pick(names), n = POLYS[shape];
+      const opts = [...new Set(shuffle([n + 1, n - 1, n + 2, 4, 3, 6]).filter(x => x >= 0 && x !== n))].slice(0, 2);
+      return finish({ type, shape, kind: 'number', prompt: 'Wie viele Ecken?', say: `Wie viele Ecken hat ${shape === 'Kreis' ? 'der Kreis' : 'das ' + shape}?` }, n, opts);
+    }
+    case 'days': {
+      const list = stage === 4 && rnd() < .5 ? MONTHS : DAYS, i = int(0, list.length - 1), before = stage === 4 && rnd() < .4;
+      const ans = list[(i + (before ? -1 : 1) + list.length) % list.length], what = list === DAYS ? 'Tag' : 'Monat';
+      const others = shuffle(list.filter(x => x !== ans && x !== list[i])).slice(0, 2);
+      return finish({ type, eq: before ? `? → ${list[i]}` : `${list[i]} → ?`, kind: 'text', prompt: `Welcher ${what} kommt ${before ? 'davor' : 'danach'}?`,
+        say: `Welcher ${what} kommt ${before ? 'vor' : 'nach'} ${list[i]}?` }, ans, others);
+    }
+    case 'english': {
+      const word = pick(Object.keys(ENGLISH)), ans = ENGLISH[word];
+      const others = shuffle(Object.values(ENGLISH).filter(x => x !== ans)).slice(0, 2);
+      return finish({ type, word, kind: 'text', prompt: 'Wie heisst das auf Englisch?', say: 'Wie heisst das auf Englisch?' }, ans, others);
     }
     case 'pattern': {
       const units = stage === 1 ? (p < .5 ? ['AB'] : ['AB', 'AAB']) : stage === 2 ? ['AB', 'AAB', 'ABB', 'ABC'] : ['ABC', 'AABB', 'ABB', 'ABAC'];

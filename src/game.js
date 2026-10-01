@@ -177,11 +177,16 @@ function updateQuiz(d, inp) {
   const Q = G.quiz; Q.t += d; Q.shake = Math.max(0, Q.shake - d);
   if (Q.solved) { if (Q.t - Q.solvedAt > 1.3) closeQuiz(true); return; }
   if (Q.t < .35) return; // kurz warten, damit ein gehaltener Sprung nicht gleich antwortet
+  // Merkspiel: erst anschauen, dann verdecken und fragen
+  if (Q.q.showT) {
+    if (Q.t < Q.q.showT) { if (inp.tap && hit(inp.tap, QUIZ_CLOSE)) closeQuiz(false); else if (inp.startPressed) closeQuiz(false); return; }
+    if (!Q.asked) { Q.asked = true; say(Q.q.say2); }
+  }
   const n = Q.q.options.length;
   if (inp.tap) {
     const i = quizButtons(n).findIndex(b => hit(inp.tap, b));
     if (i >= 0) { Q.sel = i; chooseAnswer(i); }
-    else if (hit(inp.tap, QUIZ_SPEAK)) say(Q.q.say);
+    else if (hit(inp.tap, QUIZ_SPEAK)) say(Q.q.say2 && Q.asked ? Q.q.say2 : Q.q.say);
     else if (hit(inp.tap, QUIZ_CLOSE)) closeQuiz(false);
     return;
   }

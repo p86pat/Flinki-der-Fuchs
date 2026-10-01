@@ -74,13 +74,14 @@ Läuft Flinki hinein, öffnet sich ein grosses Rätsel-Fenster:
   | Stufe | Rätsel |
   |---|---|
   | Automatisch | Stufe wächst mit der Welt (Welt 1–2 Kindergarten, 3–5 1. Klasse, 6–8 2. Klasse) |
-  | Kindergarten | zählen bis 8, mehr/weniger, Plus bis 5 mit Bildern, Muster, Anlaute (2 Buchstaben) |
-  | 1. Klasse | zählen bis 12, Plus/Minus bis 10, fehlende Zahl bis 20, Uhr (volle Stunde), Wörter lesen, Anlaute |
-  | 2. Klasse | Plus/Minus bis 100 mit Zehnerübergang (37 + 8, 83 − 36), Einmaleins 2/5/10, dann 3/4, Platzhalter (? + 7 = 15), Verdoppeln/Halbieren bis 100, Textaufgaben, Zahlenreihen, Uhr (halbe Stunde), Geld (Franken), Silben, Wort → Bild |
-  | 3. Klasse | Plus/Minus bis 1000 (340 + 250, 456 + 38, 700 − 260), alle Einmaleins-Reihen und 4 × 30, Geteilt (56 : 7), Platzhalter (6 × ? = 42), Grösser/kleiner (< > =), Textaufgaben, Zahlenreihen, Uhr (Viertelstunde), Geld mit Rappen |
+  | Kindergarten | zählen bis 8, mehr/weniger, Plus bis 5 mit Bildern, Muster, Anlaute (2 Buchstaben), Farben, gross/klein, Was passt nicht?, Reime, Merkspiel |
+  | 1. Klasse | zählen bis 12, Plus/Minus bis 10, fehlende Zahl bis 20, Uhr (volle Stunde), Wörter lesen, Anlaute, Reime, Was passt nicht?, Merkspiel, Buchstabe fehlt, Ecken zählen |
+  | 2. Klasse | Plus/Minus bis 100 mit Zehnerübergang (37 + 8, 83 − 36), Einmaleins 2/5/10, dann 3/4, Platzhalter (? + 7 = 15), Verdoppeln/Halbieren bis 100, Textaufgaben, Zahlenreihen, Uhr (halbe Stunde), Geld (Franken), Silben, Wort → Bild, Reime, Merkspiel, Buchstabe fehlt, Ecken, Wochentage |
+  | 3. Klasse | Plus/Minus bis 1000 (340 + 250, 456 + 38, 700 − 260), alle Einmaleins-Reihen und 4 × 30, Geteilt (56 : 7), Platzhalter (6 × ? = 42), Grösser/kleiner (< > =), Textaufgaben, Zahlenreihen, Uhr (Viertelstunde), Geld mit Rappen, **Englisch** (Bild → Wort), Wochentage/Monate, Merkspiel, Buchstabe fehlt |
 
   Innerhalb einer Stufe werden die Rätsel in späteren Welten etwas schwerer. In der 2. und 3. Klasse kommen Rechenaufgaben
   häufiger vor; die falschen Antworten sind typische Fehler (Übertrag vergessen = ±10/±100, um 1 verrechnet).
+- **Merkspiel:** Die Bilder sind ein paar Sekunden sichtbar (grüner Zeitbalken), dann verdeckt – erst dann kann man antworten.
 - **Lernstand für Eltern:** Im Lernstufen-Fenster steht pro Rätselart, wie oft es beim ersten Versuch geklappt hat
   (grün ab 75 %, orange ab 50 %).
 - **Vorlesen:** Die Frage wird vorgelesen, der 🔊-Knopf wiederholt sie. So geht es auch ohne Lesen.
